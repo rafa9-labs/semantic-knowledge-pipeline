@@ -37,6 +37,7 @@ from pydantic import ValidationError
 
 from models.knowledge import KnowledgeTriple, TripleExtractionResult
 from pipeline.text_chunker import TextChunk
+from pipeline.triple_filter import TripleFilter
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,15 @@ RULES:
 6. Return ONLY triples you are confident about (confidence >= 0.5).
 7. Extract AT LEAST 3 triples and AT MOST 15 triples from the text.
 
+QUALITY RULES (ANTI-HALLUCINATION):
+- NEVER extract triples from navigation menus, table of contents, or page headers.
+- NEVER use punctuation-only values like ":" or "," as subjects, predicates, or objects.
+- NEVER extract triples where subject and object are the same or nearly identical.
+- Each field (subject, predicate, object) MUST contain at least one real English word.
+- Do NOT extract metadata about the page itself (e.g., "ECMAScript® 2027 Language Specification").
+- Focus on CONCEPTUAL relationships (how things work, what they do, what they depend on).
+- Ignore section numbers, version numbers, and breadcrumb navigation.
+
 You MUST respond with ONLY valid JSON in this exact format (no markdown, no extra text):
 {
   "triples": [
@@ -78,16 +88,23 @@ You MUST respond with ONLY valid JSON in this exact format (no markdown, no extr
   ]
 }
 
-EXAMPLES:
-Text: "The async function declaration creates a new async function. The await keyword can be used inside async functions."
+GOOD EXAMPLES:
+Text: "The async function declaration creates a new async function. The await keyword can be used inside async functions. When an async function is called, it returns a Promise."
 Output:
 {
   "triples": [
-    {"subject": "async function", "predicate": "is_a", "object": "function declaration", "confidence": 0.95},
-    {"subject": "await keyword", "predicate": "is_used_in", "object": "async function", "confidence": 0.95},
-    {"subject": "async function", "predicate": "creates", "object": "asynchronous function", "confidence": 0.9}
+    {"subject": "async function", "predicate": "creates", "object": "asynchronous function", "confidence": 0.95},
+    {"subject": "await keyword", "predicate": "is_used_in", "object": "async function body", "confidence": 0.95},
+    {"subject": "async function", "predicate": "returns", "object": "Promise", "confidence": 0.95}
   ]
 }
+
+BAD EXAMPLES (DO NOT extract these):
+- {"subject": ":", "predicate": ":", "object": ":"} ← punctuation, not concepts
+- {"subject": ":", "predicate": ":", "object": ","} ← same issue
+- {"subject": "ECMAScript 2027", "predicate": "is_a", "object": "specification"} ← page metadata
+- {"subject": "async function", "predicate": "is_a", "object": "async function"} ← circular
+- {"subject": "1", "predicate": "is", "object": "2"} ← section numbers, not concepts
 """
 
 
@@ -349,8 +366,30 @@ class TripleExtractor:
             f"Deduplicated: {len(all_triples)} → {len(deduplicated)} triples"
         )
 
+        # ----------------------------------------------------------
+        # FILTER HALLUCINATIONS & GARBAGE TRIPLES
+        # ----------------------------------------------------------
+        # Apply our rule-based filters to remove triples like:
+        #   (":", ":", ":"), ("a", "is_a", "b"), circular triples, etc.
+        # This runs AFTER dedup but BEFORE returning results.
+        # The filter is fast (microseconds) because it's all regex/comparisons.
+        quality_filter = TripleFilter(min_confidence=0.3)
+        filter_result = quality_filter.filter_batch(deduplicated)
+
+        if filter_result.rejected:
+            logger.info(
+                f"Triple filter rejected {len(filter_result.rejected)} garbage triples:"
+            )
+            for triple, reason in filter_result.rejected:
+                logger.info(f"  ✗ {triple.subject} → {triple.predicate} → {triple.object_}: {reason}")
+
+        logger.info(
+            f"Quality filter: {len(deduplicated)} → {len(filter_result.accepted)} triples "
+            f"({filter_result.acceptance_rate:.0%} pass rate)"
+        )
+
         return TripleExtractionResult(
-            triples=deduplicated,
+            triples=filter_result.accepted,
             model_name=self.model_name,
             chunk_chars=sum(c.total_chunks * len(c.text) for c in chunks) if chunks else 0,
         )
