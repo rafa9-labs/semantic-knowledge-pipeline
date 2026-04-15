@@ -52,12 +52,12 @@ This structured format lets us:
                     │        │                                  │
                     │        ▼ raw text                         │
                     │  Phase 2: EXTRACT                         │
-                    │  ┌──────────┐    ┌──────────┐    ┌───────┐ │
-                    │  │Chunker   │───▶│ Gemma 4  │───▶│PostgrSQL│ │
-                    │  │(split)   │    │(LLM)     │    │(triples)│ │
-                    │  └──────────┘    └──────────┘    └───────┘ │
+                    │  ┌──────────┐    ┌──────────┐    ┌──────┐│
+                    │  │Chunker   │───▶│ Gemma 4  │───▶│Filter││
+                    │  │(split)   │    │(LLM)     │    │(clean)││
+                    │  └──────────┘    └──────────┘    └──────┘│
                     │        │                                  │
-                    │        ▼ triples + articles                │
+                    │        ▼ clean triples + articles         │
                     │  Phase 3: GENERATE                        │
                     │  ┌──────────┐    ┌──────────┐    ┌───────┐ │
                     │  │Curriculum│───▶│ Pydantic │───▶│PostgrSQL│ │
@@ -532,6 +532,53 @@ Input:  "The await keyword can only be used inside async functions..."
 
 ---
 
+### Phase 2.5: Triple Quality Filtering (`pipeline/triple_filter.py`)
+
+After extraction, we run all triples through a **rule-based quality filter** before saving to the database. This catches hallucinations that Pydantic can't (Pydantic validates structure, not semantics).
+
+**The Problem:** The LLM sometimes produces garbage triples from MDN navigation menus, code syntax, or table-of-contents:
+```
+(":", ":", ":")           ← punctuation, not concepts
+(":", ":", ",")           ← same issue
+("async function", "is_a", "async function") ← circular
+("a", "is_a", "thing")    ← too short to be meaningful
+```
+
+**The Solution:** 6 independent rule-based filters (no LLM needed — fast & free):
+
+```
+Raw triples from LLM
+        │
+        ▼
+  ┌─────────────────┐
+  │ Rule 1: Punct   │ ← Reject ":" "," "()" as field values
+  │ Rule 2: Alpha   │ ← Require ≥2 alphabetic chars per field
+  │ Rule 3: Words   │ ← Require ≥1 real word in subject/object
+  │ Rule 4: Circular│ ← Reject if subject ≈ object (Jaccard similarity)
+  │ Rule 5: Predicate│ ← Predicate must be a real word, not a symbol
+  │ Rule 6: Artifacts│ ← Catch code syntax, all-short-fields, etc.
+  └────────┬────────┘
+           │
+     ┌─────┴─────┐
+     │            │
+  ACCEPTED     REJECTED (logged with reason)
+     │
+     ▼
+  Quality Score (0.0-1.0) assigned to each surviving triple
+     │
+     ▼
+  PostgreSQL (only clean, high-quality triples)
+```
+
+**Why not use the LLM to filter?**
+- **Speed**: regex checks take microseconds; LLM calls take seconds
+- **Cost**: free vs. LLM API costs
+- **Reliability**: deterministic rules can't hallucinate
+
+**DB Cleanup Tool:** `scripts/cleanup_triples.py` retroactively applies these filters to existing triples in the database (dry-run by default, `--live` to actually delete).
+
+---
+
 ### Phase 3: Curriculum Generation (`pipeline/curriculum_agent.py`)
 
 This is where the AI designs a learning path.
@@ -668,8 +715,10 @@ The equivalent using OpenAI's API would cost ~$0.05-0.50 per pipeline run, depen
 5. The articles are split into chunks (the **Text Chunker**) because the AI can't read everything at once
 6. **LangChain** formats each chunk into a prompt and sends it to **Ollama**, which runs **Gemma 4** (our local AI)
 7. The AI reads each chunk and outputs knowledge triples — structured facts like `"await" → "enables" → "async behavior"`
-8. **Pydantic** validates each triple is well-formed before saving to **PostgreSQL**
-9. All triples + articles are sent back to the AI via **LangChain** with a curriculum design prompt
+8. **Pydantic** validates each triple is well-formed (structure)
+9. **TripleFilter** removes hallucinations and garbage (semantics) — punctuation-only triples, circular triples, and other LLM artifacts are caught by 6 rule-based filters
+10. Only clean, high-quality triples are saved to **PostgreSQL**
+11. All triples + articles are sent back to the AI via **LangChain** with a curriculum design prompt
 10. The AI generates a complete curriculum with modules and lessons
 11. **Pydantic** validates the curriculum structure (correct number of modules, required fields, etc.)
 12. **SQLAlchemy** saves the curriculum to **PostgreSQL** (3 tables: curricula, modules, lessons)
