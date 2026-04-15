@@ -1,0 +1,88 @@
+# ============================================================
+# Docker Compose - Semantic Knowledge Pipeline
+# ============================================================
+# This file defines our LOCAL DEVELOPMENT infrastructure.
+# Running `docker compose up -d` will start:
+#   1. A PostgreSQL database server
+#   2. A pgAdmin web interface to visually browse that database
+#
+# HOW DOCKER NETWORKING WORKS HERE:
+#   - Docker Compose automatically creates a virtual network for all
+#     services in this file. Think of it as a private LAN.
+#   - Containers talk to each other using their SERVICE NAMES as hostnames.
+#     (e.g., pgAdmin connects to PostgreSQL via "db:5432")
+#   - Your LOCAL Python scripts connect via "localhost:5432" because we
+#     publish the port with "ports: - 5432:5432".
+#     This maps your machine's port 5432 → container's internal port 5432.
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # SERVICE 1: PostgreSQL Database
+  # This is our PRIMARY data store. All scraped articles,
+  # processed concepts, and relationships will live here.
+  # ----------------------------------------------------------
+  db:
+    image: postgres:16          # Official PostgreSQL image, version 16 (LTS)
+    container_name: skp-db      # Friendly name for `docker ps` output
+    restart: unless-stopped     # Auto-restart if the container crashes
+    environment:
+      # These are DEFAULT DEV credentials — NOT for production!
+      # In production, these would come from a secrets manager (e.g., AWS SSM, Vault).
+      POSTGRES_USER: skp_admin
+      POSTGRES_PASSWORD: skp_dev_password
+      POSTGRES_DB: knowledge_graph  # Database name created on first start
+    ports:
+      # Format: "HOST_PORT:CONTAINER_PORT"
+      # Your Python scripts connect to localhost:5432 → routed to container's 5432
+      - "5432:5432"
+    volumes:
+      # A Docker volume PERSISTS data beyond container restarts.
+      # Without this, every `docker compose down` would DESTROY your database.
+      # The data lives at /var/lib/postgresql/data inside the container.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # This tells Docker HOW to check if PostgreSQL is truly ready
+      # (not just "running" but actually accepting connections).
+      # pgAdmin and our scripts should wait for this to be "healthy".
+      test: ["CMD-SHELL", "pg_isready -U skp_admin -d knowledge_graph"]
+      interval: 5s       # Check every 5 seconds
+      timeout: 5s        # Timeout after 5 seconds
+      retries: 5         # Give up after 5 consecutive failures
+
+  # ----------------------------------------------------------
+  # SERVICE 2: pgAdmin (Web UI for PostgreSQL)
+  # Think of this as "phpMyAdmin but for PostgreSQL."
+  # You can browse tables, run queries, and inspect schemas
+  # without writing SQL in a terminal.
+  # ----------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: skp-pgadmin
+    restart: unless-stopped
+    environment:
+      # Default login credentials for the pgAdmin WEB INTERFACE
+      # (not the database — that's above in the `db` service)
+      PGADMIN_DEFAULT_EMAIL: admin@skp.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      # Access pgAdmin in your browser at: http://localhost:5050
+      - "5050:80"
+    volumes:
+      # Persist pgAdmin settings (saved connections, preferences)
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      # Wait for `db` to be healthy before starting pgAdmin.
+      # Without this, pgAdmin might start before Postgres is ready
+      # and fail to register the database connection.
+      db:
+        condition: service_healthy
+
+# ============================================================
+# VOLUMES: Named persistent storage
+# These survive `docker compose down` but are removed with
+# `docker compose down -v` (the -v flag removes volumes too).
+# ============================================================
+volumes:
+  pgdata:
+  pgadmin_data:
