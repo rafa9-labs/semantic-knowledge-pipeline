@@ -29,6 +29,6 @@ Before starting ANY task, read these files in order:
 3. `ARCHITECTURE.md` — Deep technical explanations of existing components
 
 # Current Phase
-Phases 1-8 are COMPLETE. Next is Phase 9A (New Data Model).
-See `DESIGN.md` Section 4.3 for exact table schemas.
+Phases 1-9B are COMPLETE. Next is Phase 9C (Content Enrichment).
+See `DESIGN.md` Section 7 for the enrichment pipeline flow.
 See `HANDOFF.md` for the full roadmap and file map.

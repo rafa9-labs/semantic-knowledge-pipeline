@@ -1,6 +1,7 @@
 # 🔄 HANDOFF.md — Session State for AI Coding Assistant
 
 > **Created:** 2026-04-16, after completing Phase 8 (Design Blueprint)
+> **Updated:** 2026-04-16, after completing Phase 9A + Phase 9B
 > **Purpose:** Gives a new AI coding session full context of project state, decisions, and next steps.
 
 ---
@@ -25,7 +26,7 @@ tech stack through knowledge graphs, simple explanations, code examples, and exe
 
 ---
 
-## Current State: 7 Phases Complete, Starting Phase 9A
+## Current State: 9 Phases Complete (9A+9B), Starting Phase 9C
 
 ### ✅ Phase 1: Database Foundation — DONE
 - Docker Compose for PostgreSQL 16
@@ -70,24 +71,36 @@ tech stack through knowledge graphs, simple explanations, code examples, and exe
 - API contracts for React frontend
 - Written to `DESIGN.md`
 
+### ✅ Phase 9A: New Data Model — DONE
+- 7 new SQLAlchemy tables: domains, topics, concepts, concept_relationships, examples, exercises, source_sections
+- RelationshipType enum (7 types) with Python Enum + PostgreSQL CHECK constraints
+- topic_id FK added to raw_articles (nullable for backwards compat)
+- Alembic initialized for version-controlled schema migrations
+- Seed data: 6 domains, 23 topics with source_urls
+- Test script: 7 verification categories, all passing
+
+### ✅ Phase 9B: Multi-Source Scraping — DONE
+- Generic DocsScraper base class with configurable CSS selectors
+- 10 site-specific scrapers: Python, FastAPI, SQLAlchemy, LangChain, Docker, Weaviate, PostgreSQL, Pydantic, Playwright, GitHub
+- ScrapedPage Pydantic model (extends RawScrapedArticle with raw_html + sections)
+- Section parser: splits articles into heading-based sections -> source_sections table
+- MultiSourceScraper orchestrator: reads topics from DB, routes URLs, scrapes, stores
+- 64 source URLs across 23 topics, all routable to correct scrapers
+- scrape_all.py entry point for live scraping
+
 ---
 
-## Next Phase: 9A — New Data Model
+## Next Phase: 9C — Content Enrichment
 
 ### What to Build:
-1. Add new SQLAlchemy tables to `database/models.py`:
-   - `domains` — top-level learning domains (Python Core, Databases, AI/ML, etc.)
-   - `topics` — learning topics within domains
-   - `concepts` — individual learnable concepts (the core entity)
-   - `concept_relationships` — typed edges between concepts (the knowledge graph)
-   - `examples` — code examples for concepts
-   - `exercises` — practice problems for concepts
-   - `source_sections` — parsed article sections for citation
-2. Add `topic_id` FK to existing `raw_articles` table
-3. Create `database/seed_data.py` with initial domain/topic data
-4. Create test script to verify new tables
+1. Concept extraction: identify and deduplicate concepts from scraped articles
+2. ELI5 generation: LLM prompt that generates simple explanations
+3. Relationship extraction: LLM identifies typed relationships between concepts
+4. Example extraction: parse code blocks from articles + LLM generates new ones
+5. Exercise generation: LLM creates exercises with solutions and test cases
+6. Wire everything into pipeline as new steps
 
-### Exact table schemas are in DESIGN.md Section 4.3
+### See DESIGN.md Section 7 for the enrichment pipeline flow
 
 ---
 
@@ -102,24 +115,39 @@ CONFIGURATION:
 
 DATABASE LAYER (database/):
   connection.py     — SQLAlchemy engine, session factory, Base class
-  models.py         — ORM tables: RawArticle, KnowledgeTripleDB, CurriculumDB, ModuleDB, LessonDB
+  models.py         — ORM tables: RawArticle, KnowledgeTripleDB, + Phase 9A tables
+  seed_data.py      — Seed data: 6 domains, 23 topics (Phase 9A)
   vector_store.py   — Weaviate client: store/search/health check
 
 PYDANTIC MODELS (models/):
   content.py        — ScrapedContent, RawScrapedArticle (scraper validation)
+  scraped_page.py   — ScrapedPage, ScrapedSection (Phase 9B enriched scraping)
   knowledge.py      — KnowledgeTriple, TripleExtraction (LLM output validation)
   curriculum.py     — Curriculum, Module, Lesson (AI curriculum validation)
 
 SCRAPERS (scraper/):
-  base_scraper.py   — BaseScraper: Playwright browser, fetch_page(), extract_links()
-  mdn_scraper.py    — MDNScraper: MDN-specific CSS selectors, URL patterns
+  base_scraper.py         — BaseScraper: Playwright browser, fetch_page(), extract_links()
+  docs_scraper.py         — DocsScraper: generic configurable docs scraper (Phase 9B)
+  mdn_scraper.py          — MDNScraper: MDN-specific CSS selectors
+  python_docs_scraper.py  — Python docs (Sphinx) scraper
+  fastapi_scraper.py      — FastAPI docs (MkDocs Material) scraper
+  sqlalchemy_scraper.py   — SQLAlchemy docs (Sphinx) scraper
+  langchain_scraper.py    — LangChain docs (Mintlify) scraper
+  docker_scraper.py       — Docker docs scraper
+  weaviate_scraper.py     — Weaviate docs scraper
+  postgresql_scraper.py   — PostgreSQL docs (Sphinx) scraper
+  pydantic_scraper.py     — Pydantic docs scraper
+  playwright_docs_scraper.py — Playwright Python docs scraper
+  github_scraper.py       — GitHub README/docs scraper
 
 PIPELINE (pipeline/):
-  text_chunker.py       — Splits articles into ~1000-char overlapping chunks
-  triple_extractor.py   — LangChain + Ollama → extracts (subject, predicate, object) triples
-  triple_filter.py      — 6 quality filters + scoring (0.0–1.0)
-  curriculum_agent.py   — LangChain + Ollama → generates structured curricula
-  embedder.py           — Ollama nomic-embed-text → 768D vectors for semantic search
+  text_chunker.py          — Splits articles into ~1000-char overlapping chunks
+  triple_extractor.py      — LangChain + Ollama -> extracts (subject, predicate, object) triples
+  triple_filter.py         — 6 quality filters + scoring (0.0-1.0)
+  curriculum_agent.py      — LangChain + Ollama -> generates structured curricula
+  embedder.py              — Ollama nomic-embed-text -> 768D vectors for semantic search
+  section_parser.py        — Parses HTML sections -> source_sections table (Phase 9B)
+  multi_source_scraper.py  — Orchestrator: routes URLs, scrapes, stores (Phase 9B)
 
 API (api/):
   main.py               — FastAPI app, CORS, route registration, startup event
@@ -130,11 +158,14 @@ API (api/):
 
 SCRIPTS & TESTS:
   main.py               — Full pipeline orchestrator (5 steps)
-  test_db_setup.py      — Database connection test
-  test_scraper.py       — Scraper integration test
-  test_curriculum.py    — Curriculum generation test
-  test_triple_filter.py — 24 unit tests for quality filter
-  test_embeddings.py    — Embedding & vector store tests
+  scrape_all.py          — Multi-source scraper entry point (Phase 9B)
+  test_db_setup.py       — Database connection test
+  test_scraper.py        — Scraper integration test
+  test_curriculum.py     — Curriculum generation test
+  test_triple_filter.py  — 24 unit tests for quality filter
+  test_embeddings.py     — Embedding & vector store tests
+  test_phase9a.py        — Phase 9A verification (7 test categories)
+  test_phase9b.py        — Phase 9B verification (6 test categories)
   scripts/cleanup_triples.py — DB cleanup tool (dry-run/live)
 
 DOCUMENTATION:
@@ -211,9 +242,9 @@ These MCP tools are configured and available:
 ✅ Phase 6:  Triple Quality Filter
 ✅ Phase 7:  Vector Database & Semantic Search (Weaviate)
 ✅ Phase 8:  Design Blueprint (DESIGN.md)
-🔜 Phase 9A: New Data Model + Seed Data
-   Phase 9B: Multi-Source Scraping (6 new scrapers)
-   Phase 9C: Content Enrichment (ELI5, examples, exercises)
+✅ Phase 9A: New Data Model + Seed Data
+✅ Phase 9B: Multi-Source Scraping (10 scrapers, 64 URLs)
+🔜 Phase 9C: Content Enrichment (ELI5, examples, exercises)
    Phase 9D: RAG Chatbot
    Phase 9E: Graph Traversal & Learning Paths
    Phase 10: React Frontend

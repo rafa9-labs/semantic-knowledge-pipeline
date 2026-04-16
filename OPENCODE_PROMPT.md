@@ -12,7 +12,7 @@ Read `HANDOFF.md`, `DESIGN.md`, and `.opencode/rules.md` in that order. These fi
 
 We're building **DevKnowledge** — an AI-powered educational knowledge graph for ML/AI engineers. The tool teaches the exact tech stack used to build it ("eat your own dogfood" principle).
 
-**Phases 1–8 are COMPLETE:**
+**Phases 1–9B are COMPLETE:**
 - Phase 1: PostgreSQL + SQLAlchemy ORM (Docker)
 - Phase 2: Playwright async web scraper (MDN)
 - Phase 3: LangChain + Ollama (Gemma 4) triple extraction
@@ -21,29 +21,36 @@ We're building **DevKnowledge** — an AI-powered educational knowledge graph fo
 - Phase 6: Triple quality filter (6 rules, 24 tests passing)
 - Phase 7: Weaviate vector DB + Ollama embeddings + semantic search API
 - Phase 8: Design Blueprint (DESIGN.md — the master plan)
+- Phase 9A: New data model (7 tables, Alembic, seed data: 6 domains, 23 topics)
+- Phase 9B: Multi-source scraping (10 scrapers, 64 URLs, section parser)
 
 **Tech Stack:** Python, Playwright, Pydantic, PostgreSQL, SQLAlchemy, Ollama (Gemma 4 26B + nomic-embed-text), LangChain, Weaviate, FastAPI, Docker
 
-**Our next task is Phase 9A: New Data Model.** Here's exactly what to build:
+**Our next task is Phase 9C: Content Enrichment.** Here's exactly what to build:
 
-### Phase 9A — New Data Model + Seed Data
+### Phase 9C — Content Enrichment (LLM-powered)
 
-1. **Add 7 new SQLAlchemy tables to `database/models.py`:**
-   - `domains` — top-level learning domains (Python Core, Databases, AI/ML Pipeline, APIs & Backend, DevOps, Tooling)
-   - `topics` — learning topics within domains (Async Programming, Type Hints & Pydantic, etc.)
-   - `concepts` — individual learnable concepts (async/await, Promise, embeddings, etc.) — the CORE entity
-   - `concept_relationships` — typed edges between concepts (requires, enables, is_a, part_of, related_to, contrasts_with, built_on)
-   - `examples` — code examples for concepts (scraped + LLM-generated)
-   - `exercises` — practice problems with solutions, hints, test cases
-   - `source_sections` — parsed article sections for citation
+1. **Concept extraction pipeline** (`pipeline/concept_extractor.py`)
+   - Identify concepts from scraped articles using LLM
+   - Deduplicate by name/slug within each topic
+   - Store in `concepts` table with category and difficulty
 
-2. **Add `topic_id` foreign key** to existing `raw_articles` table
+2. **ELI5 generation pipeline** (`pipeline/eli5_generator.py`)
+   - Generate simple explanations for each concept using Gemma 4
+   - Store in `concepts.simple_explanation`
 
-3. **Create `database/seed_data.py`** with seed data for 7 domains and ~25 topics (see DESIGN.md Section 2 for the exact domain/topic structure)
+3. **Relationship extraction pipeline** (`pipeline/relationship_extractor.py`)
+   - Extract typed relationships between concepts using LLM
+   - Store in `concept_relationships` with RelationshipType validation
 
-4. **Create a test script** to verify new tables create correctly and seed data inserts
+4. **Example extraction + generation** (`pipeline/example_extractor.py`)
+   - Parse code blocks from scraped HTML
+   - Generate additional examples via LLM
+   - Store in `examples` table
 
-**Exact table schemas with all columns, types, and constraints are in `DESIGN.md` Section 4.3.**
+5. **Exercise generation pipeline** (`pipeline/exercise_generator.py`)
+   - Generate practice problems with solutions and test cases
+   - Store in `exercises` table
 
 **Important rules from .opencode/rules.md:**
 - Explain WHY before writing code using core technologies
@@ -52,11 +59,9 @@ We're building **DevKnowledge** — an AI-powered educational knowledge graph fo
 - try/except error handling everywhere
 - Descriptive comments for learning
 
-After Phase 9A, the roadmap continues:
-- Phase 9B: Multi-source scraping (6 new documentation scrapers)
-- Phase 9C: Content enrichment (ELI5, examples, exercises via LLM)
-- Phase 9D: RAG chatbot
+After Phase 9C, the roadmap continues:
+- Phase 9D: RAG Chatbot
 - Phase 9E: Graph traversal & learning paths
 - Phase 10: React frontend
 
-Let's start with Phase 9A. Read the three files, confirm you understand the data model, and begin implementing.
+Let's start with Phase 9C. Read the three files, confirm you understand the enrichment pipeline, and begin implementing.
