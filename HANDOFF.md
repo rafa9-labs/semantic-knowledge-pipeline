@@ -97,14 +97,24 @@ tech stack through knowledge graphs, simple explanations, code examples, and exe
   2 have too-little content (Embeddings & Vectors, RAG Architecture — 174 chars each),
   SQL Fundamentals (312 chars, LLM times out), Playwright (only 2 concepts from limited content)
 
+### ✅ Phase 9C-2: ELI5 + Relationship Extraction — DONE
+- ELI5Generator pipeline: generates analogy-based explanations for each concept (temperature=0.7)
+- RelationshipExtractor pipeline: extracts typed edges between concepts per topic (7 relationship types)
+- 175/176 concepts have ELI5 explanations (99.4% coverage)
+- 32 typed relationships extracted across 6 topics (medium-sized: 2-9 concepts)
+- enrich_eli5.py entry point (--concept ID, --force, --limit flags)
+- enrich_relationships.py entry point (--topic ID, --dry-run flags)
+- Large topics (10+ concepts) time out — Gemma 4 struggles with long JSON generation.
+  Future fix: split large topics into sub-batches of ~6 concepts for relationship extraction.
+
 ---
 
-## Next Phase: 9C-2 — ELI5 + Relationship Extraction
+## Next Phase: 9C-3 — Examples + Exercises
 
 ### What to Build:
-1. ELI5 generator: LLM prompt that generates simple explanations for each concept
-2. Relationship extractor: LLM identifies typed relationships between concepts within a topic
-3. Store ELI5 in concepts.simple_explanation, relationships in concept_relationships
+1. Example extractor: parse code blocks from scraped HTML + generate additional examples via LLM
+2. Exercise generator: generate practice problems with solutions and test cases via LLM
+3. Store in `examples` and `exercises` tables
 
 ### See DESIGN.md Section 7 for the enrichment pipeline flow
 
@@ -156,6 +166,8 @@ PIPELINE (pipeline/):
   section_parser.py        — Parses HTML sections -> source_sections table (Phase 9B)
   multi_source_scraper.py  — Orchestrator: routes URLs, scrapes, stores (Phase 9B)
   concept_extractor.py     — LLM concept extraction per topic with slug dedup (Phase 9C-1)
+  eli5_generator.py        — LLM ELI5 analogy generation per concept (Phase 9C-2)
+  relationship_extractor.py — LLM typed relationship extraction per topic (Phase 9C-2)
 
 API (api/):
   main.py               — FastAPI app, CORS, route registration, startup event
@@ -168,6 +180,8 @@ SCRIPTS & TESTS:
   main.py               — Full pipeline orchestrator (5 steps)
   scrape_all.py          — Multi-source scraper entry point (Phase 9B)
   enrich_concepts.py     — Concept extraction entry point, --topic/--dry-run flags (Phase 9C-1)
+  enrich_eli5.py         — ELI5 generation entry point, --concept/--force flags (Phase 9C-2)
+  enrich_relationships.py — Relationship extraction entry point, --topic/--dry-run flags (Phase 9C-2)
   test_db_setup.py       — Database connection test
   test_scraper.py        — Scraper integration test
   test_curriculum.py     — Curriculum generation test
@@ -176,6 +190,7 @@ SCRIPTS & TESTS:
   test_phase9a.py        — Phase 9A verification (7 test categories)
   test_phase9b.py        — Phase 9B verification (6 test categories)
   test_phase9c1.py       — Phase 9C-1 verification (6 test categories)
+  test_phase9c2.py       — Phase 9C-2 verification (7 test categories)
   scripts/cleanup_triples.py — DB cleanup tool (dry-run/live)
 
 DOCUMENTATION:
@@ -255,8 +270,8 @@ These MCP tools are configured and available:
 ✅ Phase 9A: New Data Model + Seed Data
 ✅ Phase 9B: Multi-Source Scraping (10 scrapers, 64 URLs)
 ✅ Phase 9C-1: Concept Extraction (176 concepts, 16 topics)
-🔜 Phase 9C-2: ELI5 + Relationship Extraction
-   Phase 9C-3: Examples + Exercises
+✅ Phase 9C-2: ELI5 + Relationships (175 ELI5s, 32 edges)
+🔜 Phase 9C-3: Examples + Exercises
    Phase 9D: RAG Chatbot
    Phase 9E: Graph Traversal & Learning Paths
    Phase 10: React Frontend
