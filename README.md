@@ -12,7 +12,8 @@ An end-to-end AI-powered pipeline that ingests technical documentation, extracts
 2. **Extracts** knowledge triples (subject → predicate → object) using a local LLM
 3. **Filters** hallucinations and garbage using 6 rule-based quality filters
 4. **Generates** structured learning curricula with modules and lessons via AI
-5. **Serves** all data through a FastAPI REST API with Swagger UI
+5. **Embeds** triples into vectors and enables semantic search via Weaviate
+6. **Serves** all data through a FastAPI REST API with Swagger UI
 
 ---
 
@@ -27,6 +28,8 @@ An end-to-end AI-powered pipeline that ingests technical documentation, extracts
 | AI Orchestration | `langchain` | Prompt templates, LLM chaining, retries |
 | LLM | `ollama` + Gemma 4 26B | Local AI for extraction & curriculum generation |
 | API | `fastapi` + `uvicorn` | REST API with auto-generated docs |
+| Vector DB | `weaviate` (Docker) | Semantic search over knowledge triples |
+| Embeddings | `ollama` + nomic-embed-text | 768D vectors for semantic similarity |
 | Deployment | `docker` + `docker-compose` | One-command infrastructure setup |
 | Quality | Rule-based filters | Hallucination detection, garbage triple removal |
 
@@ -44,7 +47,8 @@ semantic-knowledge-pipeline/
 │
 ├── database/                    # Database layer
 │   ├── connection.py            # SQLAlchemy engine & session factory
-│   └── models.py                # ORM models (tables) for PostgreSQL
+│   ├── models.py                # ORM models (tables) for PostgreSQL
+│   └── vector_store.py          # Weaviate client — semantic search
 │
 ├── models/                      # Pydantic validation models
 │   ├── content.py               # ScrapedContent — validates scraped data
@@ -59,13 +63,15 @@ semantic-knowledge-pipeline/
 │   ├── text_chunker.py          # Splits articles into ~1000-char chunks for LLM
 │   ├── triple_extractor.py      # LangChain + Ollama → extracts triples from text
 │   ├── triple_filter.py         # 6 rule-based filters for hallucination detection
-│   └── curriculum_agent.py      # LangChain + Ollama → generates curricula
+│   ├── curriculum_agent.py      # LangChain + Ollama → generates curricula
+│   └── embedder.py              # Ollama embeddings → 768D vectors for semantic search
 │
 ├── api/                         # REST API layer
 │   ├── main.py                  # FastAPI app + route registration
 │   ├── routes/
 │   │   ├── curricula.py         # GET /api/curricula, POST /api/curricula/generate
-│   │   └── knowledge.py         # GET /api/triples, GET /api/articles
+│   │   ├── knowledge.py         # GET /api/triples, GET /api/articles
+│   │   └── search.py            # POST /api/search — semantic vector search
 │   └── schemas/
 │       └── responses.py         # Pydantic response models for API
 │
@@ -76,6 +82,7 @@ semantic-knowledge-pipeline/
 ├── test_scraper.py              # Scraper integration test
 ├── test_db_setup.py             # Database connection test
 ├── test_curriculum.py           # Curriculum generation test
+├── test_embeddings.py           # Embedding & vector store integration test
 │
 ├── ARCHITECTURE.md              # Deep-dive: how every technology works & why
 └── TESTING_GUIDE.md             # How to run each test
@@ -127,12 +134,14 @@ semantic-knowledge-pipeline/
 - [x] DB cleanup script with dry-run mode (`scripts/cleanup_triples.py`)
 - [x] 24 unit tests — all passing
 
-### Phase 7: Vector Database & Semantic Search — *TODO*
-- [ ] Set up Pinecone or Weaviate (vector database)
-- [ ] Generate embeddings for knowledge triples using Ollama
-- [ ] Store embeddings in vector DB with metadata
-- [ ] Implement semantic search endpoint: "find concepts similar to X"
-- [ ] Add "related concepts" to API responses using vector similarity
+### Phase 7: Vector Database & Semantic Search — *DONE*
+- [x] Weaviate vector database in Docker (fully local, no cloud)
+- [x] Embedding generation via Ollama nomic-embed-text (768D vectors)
+- [x] Batch embed & store triples with metadata (`pipeline/embedder.py`)
+- [x] Semantic search: "find concepts similar to X" (`POST /api/search`)
+- [x] Health check for vector DB (`GET /api/search/health`)
+- [x] Integrated into main pipeline (Step 5: embed after extraction)
+- [x] Integration tests for embedder, Weaviate, and search
 
 ### Phase 8: Polished Frontend UI — *TODO*
 - [ ] Choose framework (Streamlit for speed, React for polish)
@@ -206,19 +215,20 @@ python scripts/cleanup_triples.py --live
 MDN URLs → Playwright (scrape) → Pydantic (validate) → PostgreSQL (store)
     → Text Chunker (split) → Gemma 4 via LangChain (extract triples)
     → TripleFilter (remove garbage) → PostgreSQL (clean triples)
+    → nomic-embed-text via Ollama (embed) → Weaviate (vector store)
     → Gemma 4 via LangChain (generate curriculum) → Pydantic (validate)
     → PostgreSQL (curricula + modules + lessons)
-    → FastAPI (serve as JSON REST API)
+    → FastAPI (serve as JSON REST API + semantic search)
 ```
 
 ---
 
 ## 📋 Next Steps (for new chat)
 
-The pipeline is fully functional from scraping through API. The remaining work is:
+The pipeline is fully functional from scraping through semantic search API. The remaining work is:
 
-1. **Phase 7: Vector Database** — Add Pinecone or Weaviate for semantic search over triples. Generate embeddings with Ollama, store in vector DB, create `/api/search` endpoint.
+1. **Phase 8: Frontend UI** — Build a visual interface. Streamlit is fastest for a data-oriented UI; React gives the most polish. Start with a knowledge graph visualization.
 
-2. **Phase 8: Frontend UI** — Build a visual interface. Streamlit is fastest for a data-oriented UI; React gives the most polish. Start with a knowledge graph visualization.
+2. **Phase 9: Advanced Features** — Multi-source scraping (beyond MDN), concept deduplication across sources, user progress tracking, adaptive curriculum recommendations.
 
 See `.clinerules` for the coding standards and tech stack constraints to follow.

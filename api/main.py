@@ -27,7 +27,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database.connection import engine, Base
-from api.routes import curricula, knowledge
+from api.routes import curricula, knowledge, search
 from api.schemas.responses import HealthResponse
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,7 @@ app.add_middleware(
 #   - knowledge router: /api/articles, /api/triples
 app.include_router(curricula.router)
 app.include_router(knowledge.router)
+app.include_router(search.router)
 
 
 # ----------------------------------------------------------

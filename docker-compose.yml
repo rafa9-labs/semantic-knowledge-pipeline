@@ -56,6 +56,54 @@ services:
   # You can browse tables, run queries, and inspect schemas
   # without writing SQL in a terminal.
   # ----------------------------------------------------------
+  # ----------------------------------------------------------
+  # SERVICE 3: Weaviate (Vector Database)
+  # Weaviate stores EMBEDDINGS — mathematical representations (vectors)
+  # of our knowledge triples. This enables SEMANTIC SEARCH:
+  # "find concepts similar to X" rather than exact keyword matches.
+  #
+  # HOW VECTOR SEARCH WORKS:
+  #   1. We convert each triple into text: "await keyword enables async behavior"
+  #   2. Ollama's embedding model turns that text into a 768-dimensional vector
+  #   3. Weaviate stores these vectors and can find the "closest" ones to a query
+  #   4. "Closest" = most semantically similar meaning (not just keyword match)
+  #
+  # WHY WEAVIATE OVER PINECONE?
+  #   - Fully local (no cloud dependency, matches our "$0, 0 cloud deps" philosophy)
+  #   - Runs in Docker alongside PostgreSQL
+  #   - No API keys needed
+  #   - Free and open source
+  # ----------------------------------------------------------
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.28.5
+    container_name: skp-weaviate
+    restart: unless-stopped
+    ports:
+      # REST API (our Python code talks to this)
+      - "8080:8080"
+      # gRPC API (faster for bulk operations — optional but recommended)
+      - "50051:50051"
+    environment:
+      # DISABLE AUTHENTICATION for local dev (no API key needed)
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      # Allow running without a persistent volume during development
+      # (data is still persisted via the volume below)
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      # Default vectorizer: we provide our OWN vectors via Ollama (not Weaviate's built-in)
+      # "none" = we must supply vectors manually (which our embedder.py does)
+      DEFAULT_VECTORIZER_MODULE: "none"
+      # Disable auto-schema creation — we define our schema explicitly in code
+      # This prevents accidental schema creation from malformed data
+      ENABLE_MODULES: ""
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      # Weaviate's /v1/.well-known/ready returns 200 when ready to accept requests
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: skp-pgadmin
@@ -86,3 +134,4 @@ services:
 volumes:
   pgdata:
   pgadmin_data:
+  weaviate_data:

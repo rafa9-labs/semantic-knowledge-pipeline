@@ -40,6 +40,13 @@ langchain-core>=0.3.0
 # running in Ollama. Without this, LangChain wouldn't know how to call Ollama.
 langchain-ollama>=0.3.0
 
+# --- Vector Database ---
+# weaviate-client: Python client for Weaviate vector database.
+# Weaviate stores EMBEDDINGS (mathematical vectors) of our knowledge triples,
+# enabling SEMANTIC SEARCH — "find concepts similar to X" without exact keyword match.
+# v4+ uses the gRPC protocol for fast bulk operations.
+weaviate-client>=4.0
+
 # --- REST API ---
 # FastAPI: Modern, high-performance web framework for building APIs.
 # Auto-generates Swagger docs, validates request/response with Pydantic.
