@@ -26,7 +26,7 @@ tech stack through knowledge graphs, simple explanations, code examples, and exe
 
 ---
 
-## Current State: 9 Phases Complete (9A+9B), Starting Phase 9C
+## Current State: Phase 9C-1 Complete, Starting Phase 9C-2
 
 ### ✅ Phase 1: Database Foundation — DONE
 - Docker Compose for PostgreSQL 16
@@ -88,17 +88,23 @@ tech stack through knowledge graphs, simple explanations, code examples, and exe
 - 64 source URLs across 23 topics, all routable to correct scrapers
 - scrape_all.py entry point for live scraping
 
+### ✅ Phase 9C-1: Concept Extraction — DONE
+- Pydantic models: ExtractedConcept, ConceptExtractionResult, ExtractedRelationship (models/enrichment.py)
+- ConceptExtractor pipeline: reads articles per topic, sends to Gemma 4, validates, deduplicates by slug
+- enrich_concepts.py entry point (supports --topic ID, --dry-run, --model flags)
+- 176 concepts extracted across 16 of 23 topics
+- 7 topics have 0 concepts: 3 have no articles (LLM Fundamentals, LangChain, Git & GitHub),
+  2 have too-little content (Embeddings & Vectors, RAG Architecture — 174 chars each),
+  SQL Fundamentals (312 chars, LLM times out), Playwright (only 2 concepts from limited content)
+
 ---
 
-## Next Phase: 9C — Content Enrichment
+## Next Phase: 9C-2 — ELI5 + Relationship Extraction
 
 ### What to Build:
-1. Concept extraction: identify and deduplicate concepts from scraped articles
-2. ELI5 generation: LLM prompt that generates simple explanations
-3. Relationship extraction: LLM identifies typed relationships between concepts
-4. Example extraction: parse code blocks from articles + LLM generates new ones
-5. Exercise generation: LLM creates exercises with solutions and test cases
-6. Wire everything into pipeline as new steps
+1. ELI5 generator: LLM prompt that generates simple explanations for each concept
+2. Relationship extractor: LLM identifies typed relationships between concepts within a topic
+3. Store ELI5 in concepts.simple_explanation, relationships in concept_relationships
 
 ### See DESIGN.md Section 7 for the enrichment pipeline flow
 
@@ -124,6 +130,7 @@ PYDANTIC MODELS (models/):
   scraped_page.py   — ScrapedPage, ScrapedSection (Phase 9B enriched scraping)
   knowledge.py      — KnowledgeTriple, TripleExtraction (LLM output validation)
   curriculum.py     — Curriculum, Module, Lesson (AI curriculum validation)
+  enrichment.py     — ExtractedConcept, ConceptExtractionResult, ExtractedRelationship (Phase 9C-1)
 
 SCRAPERS (scraper/):
   base_scraper.py         — BaseScraper: Playwright browser, fetch_page(), extract_links()
@@ -148,6 +155,7 @@ PIPELINE (pipeline/):
   embedder.py              — Ollama nomic-embed-text -> 768D vectors for semantic search
   section_parser.py        — Parses HTML sections -> source_sections table (Phase 9B)
   multi_source_scraper.py  — Orchestrator: routes URLs, scrapes, stores (Phase 9B)
+  concept_extractor.py     — LLM concept extraction per topic with slug dedup (Phase 9C-1)
 
 API (api/):
   main.py               — FastAPI app, CORS, route registration, startup event
@@ -159,6 +167,7 @@ API (api/):
 SCRIPTS & TESTS:
   main.py               — Full pipeline orchestrator (5 steps)
   scrape_all.py          — Multi-source scraper entry point (Phase 9B)
+  enrich_concepts.py     — Concept extraction entry point, --topic/--dry-run flags (Phase 9C-1)
   test_db_setup.py       — Database connection test
   test_scraper.py        — Scraper integration test
   test_curriculum.py     — Curriculum generation test
@@ -166,6 +175,7 @@ SCRIPTS & TESTS:
   test_embeddings.py     — Embedding & vector store tests
   test_phase9a.py        — Phase 9A verification (7 test categories)
   test_phase9b.py        — Phase 9B verification (6 test categories)
+  test_phase9c1.py       — Phase 9C-1 verification (6 test categories)
   scripts/cleanup_triples.py — DB cleanup tool (dry-run/live)
 
 DOCUMENTATION:
@@ -244,7 +254,9 @@ These MCP tools are configured and available:
 ✅ Phase 8:  Design Blueprint (DESIGN.md)
 ✅ Phase 9A: New Data Model + Seed Data
 ✅ Phase 9B: Multi-Source Scraping (10 scrapers, 64 URLs)
-🔜 Phase 9C: Content Enrichment (ELI5, examples, exercises)
+✅ Phase 9C-1: Concept Extraction (176 concepts, 16 topics)
+🔜 Phase 9C-2: ELI5 + Relationship Extraction
+   Phase 9C-3: Examples + Exercises
    Phase 9D: RAG Chatbot
    Phase 9E: Graph Traversal & Learning Paths
    Phase 10: React Frontend
