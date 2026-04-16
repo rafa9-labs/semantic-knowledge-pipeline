@@ -24,6 +24,13 @@ from scraper.mdn_scraper import MdnScraper
 from pipeline.text_chunker import chunk_text
 from pipeline.triple_extractor import TripleExtractor
 from pipeline.curriculum_agent import CurriculumAgent
+from pipeline.embedder import TripleEmbedder
+from database.vector_store import (
+    get_weaviate_client,
+    ensure_collection_exists,
+    batch_store_triples,
+    get_collection_size,
+)
 
 # ----------------------------------------------------------
 # LOGGING CONFIGURATION
@@ -222,7 +229,118 @@ async def run_pipeline() -> None:
             session.commit()
 
     # ----------------------------------------------------------
-    # STEP 5: Generate Curriculum from Knowledge Graph
+    # STEP 5: Embed Triples & Store in Weaviate (Vector DB)
+    # ----------------------------------------------------------
+    # This is where we convert all knowledge triples into EMBEDDINGS —
+    # mathematical vectors that capture the MEANING of each triple.
+    # These vectors are stored in Weaviate, enabling SEMANTIC SEARCH:
+    #   "find concepts similar to async/await" → returns related triples
+    #
+    # WHY AFTER EXTRACTION BUT BEFORE CURRICULUM?
+    #   - We need triples to exist in PostgreSQL first (source of truth)
+    #   - Weaviate is a SECONDARY index — it mirrors PostgreSQL data with vectors
+    #   - Curriculum generation doesn't depend on vectors (it uses text)
+    #   - But the API's "related concepts" feature will need these vectors
+    #
+    # WHAT HAPPENS:
+    #   1. Read ALL triples from PostgreSQL
+    #   2. Each triple → natural language text ("await enables async behavior")
+    #   3. Text → Ollama embedding model → 768-dimensional vector
+    #   4. Vector + metadata → Weaviate (ready for semantic search)
+    logger.info("=" * 60)
+    logger.info("STEP 5: EMBEDDING GENERATION & VECTOR STORAGE")
+    logger.info("=" * 60)
+
+    embedded_count = 0
+    try:
+        # Connect to Weaviate and ensure the collection exists
+        weaviate_client = get_weaviate_client()
+        ensure_collection_exists(weaviate_client)
+
+        # Read ALL triples from PostgreSQL (not just new ones — idempotent)
+        with get_db_session() as session:
+            all_triples_for_embedding = session.query(KnowledgeTripleDB).all()
+
+        if all_triples_for_embedding:
+            logger.info(f"Embedding {len(all_triples_for_embedding)} triples...")
+
+            # Convert SQLAlchemy objects to dicts for the embedder
+            triples_for_embedding = [
+                {
+                    "triple_id": t.id,
+                    "subject": t.subject,
+                    "predicate": t.predicate,
+                    "object_value": t.object_value,
+                    "source_url": t.source_url,
+                    "confidence": t.confidence,
+                }
+                for t in all_triples_for_embedding
+            ]
+
+            # Initialize the embedder (uses Ollama's nomic-embed-text model)
+            embedder = TripleEmbedder(model_name="nomic-embed-text")
+
+            # Generate embeddings for all triples
+            embedding_results = embedder.embed_triples_batch(triples_for_embedding)
+
+            if embedding_results:
+                # Prepare data for Weaviate batch insert
+                triples_data_for_weaviate = [
+                    {
+                        "triple_id": r.triple_id,
+                        "subject": next(
+                            (t["subject"] for t in triples_for_embedding if t["triple_id"] == r.triple_id),
+                            ""
+                        ),
+                        "predicate": next(
+                            (t["predicate"] for t in triples_for_embedding if t["triple_id"] == r.triple_id),
+                            ""
+                        ),
+                        "object_value": next(
+                            (t["object_value"] for t in triples_for_embedding if t["triple_id"] == r.triple_id),
+                            ""
+                        ),
+                        "source_url": next(
+                            (t["source_url"] for t in triples_for_embedding if t["triple_id"] == r.triple_id),
+                            ""
+                        ),
+                        "confidence": next(
+                            (t["confidence"] for t in triples_for_embedding if t["triple_id"] == r.triple_id),
+                            0.0
+                        ),
+                    }
+                    for r in embedding_results
+                ]
+                vectors = [r.vector for r in embedding_results]
+
+                # Batch insert into Weaviate
+                batch_result = batch_store_triples(
+                    weaviate_client,
+                    triples_data_for_weaviate,
+                    vectors,
+                )
+                embedded_count = batch_result["stored"]
+                logger.info(f"Vector store: {batch_result}")
+            else:
+                logger.warning("No embeddings generated")
+        else:
+            logger.info("No triples to embed")
+
+        # Log Weaviate collection size
+        vec_count = get_collection_size(weaviate_client)
+        logger.info(f"Weaviate collection size: {vec_count} vectors")
+
+        weaviate_client.close()
+
+    except ConnectionError as e:
+        logger.warning(f"Weaviate not available — skipping embedding step: {e}")
+        logger.warning("Start Weaviate with: docker compose up -d weaviate")
+    except Exception as e:
+        logger.error(f"Embedding step failed: {e}")
+        logger.warning("Continuing pipeline — embedding failure is not fatal")
+
+    # ----------------------------------------------------------
+    # STEP 6: Generate Curriculum from Knowledge Graph
     # ----------------------------------------------------------
     # This is the CORE PRODUCT FEATURE — our AI agent reads all the
     # triples and articles from the database, then generates a structured
@@ -233,7 +351,7 @@ async def run_pipeline() -> None:
     #   - The knowledge graph grows over time as we scrape more sources
     #   - The agent can generate richer curricula with more data
     logger.info("=" * 60)
-    logger.info("STEP 5: CURRICULUM GENERATION (CurriculumAgent)")
+    logger.info("STEP 6: CURRICULUM GENERATION (CurriculumAgent)")
     logger.info("=" * 60)
 
     # Gather context from the knowledge graph
@@ -333,14 +451,15 @@ async def run_pipeline() -> None:
         logger.error("Curriculum generation failed after all retries")
 
     # ----------------------------------------------------------
-    # STEP 6: Final Summary
+    # STEP 7: Final Summary
     # ----------------------------------------------------------
     logger.info("=" * 60)
     logger.info("PIPELINE COMPLETE")
-    logger.info(f"  Scraped:  {len(articles)}/{len(MDN_URLS)}")
-    logger.info(f"  Stored:   {stored_count} new articles")
-    logger.info(f"  Skipped:  {skipped_count} duplicate articles")
-    logger.info(f"  Triples:  {total_triples} new knowledge triples")
+    logger.info(f"  Scraped:   {len(articles)}/{len(MDN_URLS)}")
+    logger.info(f"  Stored:    {stored_count} new articles")
+    logger.info(f"  Skipped:   {skipped_count} duplicate articles")
+    logger.info(f"  Triples:   {total_triples} new knowledge triples")
+    logger.info(f"  Embedded:  {embedded_count} vectors in Weaviate")
     logger.info("=" * 60)
 
     # Show what's in the database now
