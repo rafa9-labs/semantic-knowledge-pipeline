@@ -19,6 +19,12 @@ pydantic==2.11.3
 # classes and query them using Python methods instead of raw SQL strings.
 SQLAlchemy==2.0.41
 
+# Alembic: Database migration tool for SQLAlchemy.
+# Tracks schema changes in version-controlled migration scripts.
+# Instead of manually writing ALTER TABLE, we run `alembic revision --autogenerate`
+# and Alembic detects model changes and generates the migration automatically.
+alembic>=1.13.0
+
 # psycopg2-binary: The PostgreSQL adapter for Python. "Binary" means it comes
 # pre-compiled, so you don't need to build from source. SQLAlchemy uses this
 # under the hood to talk to PostgreSQL.
