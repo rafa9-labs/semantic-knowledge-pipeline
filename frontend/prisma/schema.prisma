@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Tier {
+  FREE
+  PREMIUM
+}
+
+model User {
+  id              String          @id @default(cuid())
+  email           String          @unique
+  name            String?
+  image           String?
+  tier            Tier            @default(FREE)
+  stripeCustomerId String?        @unique
+  stripePriceId   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  enrollments     Enrollment[]
+  generationJobs  GenerationJob[]
+}
+
+model Enrollment {
+  id        String     @id @default(cuid())
+  userId    String
+  topicId   Int
+  user      User       @relation(fields: [userId], references: [id])
+  progress  Progress[]
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, topicId])
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Progress {
+  id            String         @id @default(cuid())
+  enrollmentId  String
+  conceptId     Int
+  enrollment    Enrollment     @relation(fields: [enrollmentId], references: [id])
+  status        ProgressStatus @default(NOT_STARTED)
+  completedAt   DateTime?
+
+  @@unique([enrollmentId, conceptId])
+}
+
+enum JobStatus {
+  PENDING
+  SCRAPING
+  EXTRACTING
+  ENRICHING
+  GENERATING
+  COMPLETE
+  FAILED
+}
+
+model GenerationJob {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  topicName     String
+  status        JobStatus  @default(PENDING)
+  resultTopicId Int?
+  steps         Json
+  error         String?
+  createdAt     DateTime   @default(now())
+  completedAt   DateTime?
+}

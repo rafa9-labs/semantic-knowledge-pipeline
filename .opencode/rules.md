@@ -29,6 +29,6 @@ Before starting ANY task, read these files in order:
 3. `ARCHITECTURE.md` — Deep technical explanations of existing components
 
 # Current Phase
-Phases 1-9B are COMPLETE. Next is Phase 9C (Content Enrichment).
-See `DESIGN.md` Section 7 for the enrichment pipeline flow.
-See `HANDOFF.md` for the full roadmap and file map.
+Phases 1-9C-3 are COMPLETE. Next is Phase 9D (RAG Chatbot).
+Code is ready for live run of enrich_examples.py and enrich_exercises.py.
+See `DESIGN.md` Section 5.5 for RAG API contracts, Section 9 Phase 9D for details.

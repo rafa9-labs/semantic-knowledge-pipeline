@@ -45,6 +45,7 @@ from sqlalchemy.orm import Session
 from database.connection import SessionLocal
 from database.models import Concept, Topic, RawArticle
 from models.enrichment import ExtractedConcept, ConceptExtractionResult
+from config.models import get_model_name, OLLAMA_BASE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -152,8 +153,8 @@ class ConceptExtractor:
 
     def __init__(
         self,
-        model_name: str = "gemma4:26b",
-        base_url: str = "http://localhost:11434",
+        model_name: str = None,
+        base_url: str = None,
         temperature: float = 0.2,
         num_ctx: int = 32768,
         max_retries: int = 3,
@@ -163,8 +164,8 @@ class ConceptExtractor:
         Initialize the ConceptExtractor.
 
         Args:
-            model_name: Ollama model tag (default: "gemma4:26b" for Gemma 4 26B).
-            base_url: Ollama server URL.
+            model_name: Ollama model tag. Defaults to BRAIN model from config.
+            base_url: Ollama server URL. Defaults to OLLAMA_BASE_URL from config.
             temperature: 0.2 — slightly creative (we want diverse concepts)
                 but still mostly deterministic (we don't want random categories).
             num_ctx: Context window in tokens. 32768 ≈ 24K words.
@@ -172,12 +173,13 @@ class ConceptExtractor:
             max_article_chars: Truncate concatenated article text to this many
                 characters to stay within the LLM's context window.
         """
-        self.model_name = model_name
+        self.model_name = model_name or get_model_name("concept_extractor")
+        base_url = base_url or OLLAMA_BASE_URL
         self.max_retries = max_retries
         self.max_article_chars = max_article_chars
 
         self.llm = ChatOllama(
-            model=model_name,
+            model=self.model_name,
             base_url=base_url,
             temperature=temperature,
             num_ctx=num_ctx,
@@ -185,7 +187,7 @@ class ConceptExtractor:
         )
 
         logger.info(
-            f"ConceptExtractor initialized: model={model_name}, "
+            f"ConceptExtractor initialized: model={self.model_name}, "
             f"ctx={num_ctx}, temp={temperature}, max_chars={max_article_chars}"
         )
 

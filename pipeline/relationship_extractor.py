@@ -51,6 +51,7 @@ from models.enrichment import (
     VALID_RELATIONSHIP_TYPES,
 )
 from pipeline.concept_extractor import slugify
+from config.models import get_model_name, OLLAMA_BASE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -117,27 +118,18 @@ class RelationshipExtractor:
 
     def __init__(
         self,
-        model_name: str = "gemma4:26b",
-        base_url: str = "http://localhost:11434",
+        model_name: str = None,
+        base_url: str = None,
         temperature: float = 0.2,
         num_ctx: int = 8192,
         max_retries: int = 3,
     ):
-        """
-        Initialize the RelationshipExtractor.
-
-        Args:
-            model_name: Ollama model tag.
-            base_url: Ollama server URL.
-            temperature: 0.2 — low creativity, we want accurate relationship types.
-            num_ctx: 16K context — concept names + descriptions fit comfortably.
-            max_retries: Retry count for LLM failures.
-        """
-        self.model_name = model_name
+        self.model_name = model_name or get_model_name("relationship_extractor")
+        base_url = base_url or OLLAMA_BASE_URL
         self.max_retries = max_retries
 
         self.llm = ChatOllama(
-            model=model_name,
+            model=self.model_name,
             base_url=base_url,
             temperature=temperature,
             num_ctx=num_ctx,
@@ -145,7 +137,7 @@ class RelationshipExtractor:
         )
 
         logger.info(
-            f"RelationshipExtractor initialized: model={model_name}, "
+            f"RelationshipExtractor initialized: model={self.model_name}, "
             f"ctx={num_ctx}, temp={temperature}"
         )
 

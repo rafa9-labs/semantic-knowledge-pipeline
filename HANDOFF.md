@@ -26,7 +26,7 @@ tech stack through knowledge graphs, simple explanations, code examples, and exe
 
 ---
 
-## Current State: Phase 9C-1 Complete, Starting Phase 9C-2
+## Current State: Phase 9C-3 Code Complete, Ready for Live Run
 
 ### ✅ Phase 1: Database Foundation — DONE
 - Docker Compose for PostgreSQL 16
@@ -109,14 +109,27 @@ tech stack through knowledge graphs, simple explanations, code examples, and exe
 
 ---
 
-## Next Phase: 9C-3 — Examples + Exercises
+### ✅ Phase 9C-3: Examples + Exercises — CODE COMPLETE
+- Pydantic models: GeneratedExample, GeneratedExercise, ExampleGenerationResult, ExerciseGenerationResult (models/enrichment.py)
+- ExampleGenerator pipeline: generates 2-3 code examples per concept via Gemma 4 (temperature=0.4)
+- ExerciseGenerator pipeline: generates 1-2 practice exercises per concept via Gemma 4 (temperature=0.3)
+- Both pipelines: Pydantic validation → SQLAlchemy upsert, idempotent (skips existing), --force flag
+- enrich_examples.py entry point (--concept ID, --force, --limit, --dry-run flags)
+- enrich_exercises.py entry point (--concept ID, --force, --limit, --dry-run flags)
+- test_phase9c3.py verification script (7 test categories)
+- Next: Run live generation with `python enrich_examples.py` then `python enrich_exercises.py`
+
+---
+
+## Next Phase: 9D — RAG Chatbot
 
 ### What to Build:
-1. Example extractor: parse code blocks from scraped HTML + generate additional examples via LLM
-2. Exercise generator: generate practice problems with solutions and test cases via LLM
-3. Store in `examples` and `exercises` tables
+1. Embed raw article sections (not just triples) into Weaviate
+2. RAG pipeline: user question → retrieve relevant sections → LLM answers with sources
+3. `POST /api/chat` endpoint
+4. `POST /api/search/suggest` autocomplete endpoint
 
-### See DESIGN.md Section 7 for the enrichment pipeline flow
+### See DESIGN.md Section 5.5 for API contracts, Section 9 Phase 9D for details
 
 ---
 
@@ -140,7 +153,7 @@ PYDANTIC MODELS (models/):
   scraped_page.py   — ScrapedPage, ScrapedSection (Phase 9B enriched scraping)
   knowledge.py      — KnowledgeTriple, TripleExtraction (LLM output validation)
   curriculum.py     — Curriculum, Module, Lesson (AI curriculum validation)
-  enrichment.py     — ExtractedConcept, ConceptExtractionResult, ExtractedRelationship (Phase 9C-1)
+  enrichment.py     — ExtractedConcept, ConceptExtractionResult, ExtractedRelationship, GeneratedExample, GeneratedExercise (Phase 9C-1/9C-3)
 
 SCRAPERS (scraper/):
   base_scraper.py         — BaseScraper: Playwright browser, fetch_page(), extract_links()
@@ -168,6 +181,8 @@ PIPELINE (pipeline/):
   concept_extractor.py     — LLM concept extraction per topic with slug dedup (Phase 9C-1)
   eli5_generator.py        — LLM ELI5 analogy generation per concept (Phase 9C-2)
   relationship_extractor.py — LLM typed relationship extraction per topic (Phase 9C-2)
+  example_generator.py   — LLM code example generation per concept (Phase 9C-3)
+  exercise_generator.py  — LLM exercise generation per concept (Phase 9C-3)
 
 API (api/):
   main.py               — FastAPI app, CORS, route registration, startup event
@@ -182,6 +197,8 @@ SCRIPTS & TESTS:
   enrich_concepts.py     — Concept extraction entry point, --topic/--dry-run flags (Phase 9C-1)
   enrich_eli5.py         — ELI5 generation entry point, --concept/--force flags (Phase 9C-2)
   enrich_relationships.py — Relationship extraction entry point, --topic/--dry-run flags (Phase 9C-2)
+  enrich_examples.py     — Example generation entry point, --concept/--force/--limit/--dry-run flags (Phase 9C-3)
+  enrich_exercises.py    — Exercise generation entry point, --concept/--force/--limit/--dry-run flags (Phase 9C-3)
   test_db_setup.py       — Database connection test
   test_scraper.py        — Scraper integration test
   test_curriculum.py     — Curriculum generation test
@@ -191,6 +208,7 @@ SCRIPTS & TESTS:
   test_phase9b.py        — Phase 9B verification (6 test categories)
   test_phase9c1.py       — Phase 9C-1 verification (6 test categories)
   test_phase9c2.py       — Phase 9C-2 verification (7 test categories)
+  test_phase9c3.py       — Phase 9C-3 verification (7 test categories)
   scripts/cleanup_triples.py — DB cleanup tool (dry-run/live)
 
 DOCUMENTATION:

@@ -61,3 +61,11 @@ logs/
 # Playwright downloads browser binaries to a local cache.
 # These are large (~300MB+) and specific to each OS.
 playwright/.local-browsers/
+
+# ============================================================
+# Frontend (Next.js)
+# ============================================================
+frontend/node_modules/
+frontend/.next/
+frontend/.env
+frontend/.env.local
