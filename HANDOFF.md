@@ -1,7 +1,7 @@
-# 🔄 HANDOFF.md — Session State for AI Coding Assistant
+# HANDOFF.md — Session State for AI Coding Assistant
 
 > **Created:** 2026-04-16, after completing Phase 8 (Design Blueprint)
-> **Updated:** 2026-04-16, after completing Phase 9A + Phase 9B
+> **Updated:** 2026-04-19, after committing Phase 9C-3 + SaaS architecture + frontend (11A-11C)
 > **Purpose:** Gives a new AI coding session full context of project state, decisions, and next steps.
 
 ---
@@ -9,115 +9,73 @@
 ## Quick Start — Read These Files in Order
 
 1. **This file** (`HANDOFF.md`) — Current state, what's done, what's next
-2. **`.clinerules`** or **`.opencode/rules.md`** — Coding standards and teaching protocol
+2. **`.opencode/rules.md`** — Coding standards and teaching protocol
 3. **`DESIGN.md`** — Product blueprint (Phase 8 output, the master plan)
-4. **`ARCHITECTURE.md`** — Deep technical explanations of every component
-5. **`README.md`** — Project overview and setup instructions
+4. **`DESIGN_SAAS.md`** — SaaS architecture blueprint (Vercel + Railway + Supabase + Stripe)
+5. **`ARCHITECTURE.md`** — Deep technical explanations of every component
+6. **`README.md`** — Project overview, roadmap, and setup instructions
 
 ---
 
 ## Project Identity
 
-**Name:** DevKnowledge — AI-Powered Educational Knowledge Graph
-**Purpose:** An AI-powered learning platform where ML/AI engineers learn the modern data/AI
-tech stack through knowledge graphs, simple explanations, code examples, and exercises.
+**Name:** KodaStudy (formerly DevKnowledge)
+**Tagline:** "Master any subject through AI-powered knowledge graphs"
+**URL:** kodastudy.com
+**Purpose:** An AI-powered SaaS learning platform where ML/AI engineers learn the modern data/AI tech stack through knowledge graphs, simple explanations, code examples, and exercises.
 **Principle:** "Eat your own dogfood" — teaches the exact stack used to build it.
-**Stack:** Python, Playwright, Pydantic, PostgreSQL, SQLAlchemy, Ollama, LangChain, Weaviate, FastAPI, Docker
+**Stack:** Python, Playwright, Pydantic, PostgreSQL, SQLAlchemy, Ollama (Qwen 3.5), LangChain, Weaviate, FastAPI, Next.js 15, Supabase, Docker
 
 ---
 
-## Current State: Phase 9C-3 Code Complete, Ready for Live Run
+## Current State: Phase 9C-3 Committed, 9D (RAG) Is Next
 
-### ✅ Phase 1: Database Foundation — DONE
-- Docker Compose for PostgreSQL 16
-- SQLAlchemy connection factory (`database/connection.py`)
-- ORM models: `raw_articles`, `knowledge_triples`, `curricula`, `modules`, `lessons`
+### Backend Pipeline — ALL DONE through Phase 9C-3
 
-### ✅ Phase 2: Web Scraping — DONE
-- Playwright async headless browser (`scraper/base_scraper.py`)
-- MDN-specific scraper (`scraper/mdn_scraper.py`)
-- Pydantic `ScrapedContent` validation model
+| Phase | Status | Key Output |
+|-------|--------|------------|
+| 1: Database Foundation | ✅ DONE | PostgreSQL + Docker, SQLAlchemy, Alembic migrations |
+| 2: Web Scraping | ✅ DONE | Playwright headless browser, MDN scraper |
+| 3: Knowledge Extraction | ✅ DONE | LangChain + Ollama triple extractor, Pydantic validation |
+| 4: Curriculum Generation | ✅ DONE | AI curriculum agent, cascading saves |
+| 5: REST API | ✅ DONE | FastAPI + Uvicorn, Swagger UI |
+| 6: Triple Quality Filter | ✅ DONE | 6 hallucination filters, 24 unit tests |
+| 7: Vector DB & Search | ✅ DONE | Weaviate, nomic-embed-text embeddings, semantic search |
+| 8: Design Blueprint | ✅ DONE | DESIGN.md — product vision, data model, API contracts |
+| 9A: New Data Model | ✅ DONE | 7 new tables, 6 domains, 23 topics seed data |
+| 9B: Multi-Source Scraping | ✅ DONE | 10 scrapers, 52 articles, 1,155 sections |
+| 9C-1: Concept Extraction | ✅ DONE | 176 concepts across 16 topics |
+| 9C-2: ELI5 + Relationships | ✅ DONE | 175 ELI5s, 32 typed relationships |
+| 9C-3: Examples + Exercises | ✅ CODE DONE | Generators built, **awaiting live run** |
+| 9D: RAG Chatbot | 🔜 NEXT | Embed sections, RAG pipeline, POST /api/chat |
+| 9E: Graph & Paths | 🔜 PLANNED | BFS/DFS, learning path generation |
 
-### ✅ Phase 3: Knowledge Extraction — DONE
-- Text chunker (`pipeline/text_chunker.py`)
-- LangChain + Ollama (Gemma 4 26B) triple extractor (`pipeline/triple_extractor.py`)
-- Pydantic `KnowledgeTriple` model with confidence scoring
+### SaaS Product — Phases 11A–11C DONE
 
-### ✅ Phase 4: Curriculum Generation — DONE
-- AI curriculum agent (`pipeline/curriculum_agent.py`)
-- Pydantic `Curriculum`, `Module`, `Lesson` models
+| Phase | Status | Key Output |
+|-------|--------|------------|
+| 11A: Frontend Setup | ✅ DONE | Next.js 15, TailwindCSS, shadcn/ui, Supabase Auth, Prisma |
+| 11B: Public Pages | ✅ DONE | Landing, catalog, pricing, login/signup |
+| 11C: Dashboard + Learning | ✅ DONE | 3-panel layout, 4-tab concept view (Theory/ELI5/Examples/Exercises) |
+| 11D: AI Tutor + Graph | 🔜 PLANNED | Wire AiTutor, KnowledgeGraphView, LearningPathView |
+| 11E: Premium Features | 🔜 PLANNED | Stripe, PaywallGate, on-demand generation |
+| 12: FastAPI Enhancements | 🔜 PLANNED | Auth middleware, cloud LLM, pagination |
+| 13: Production Deploy | 🔜 PLANNED | Vercel + Railway, kodastudy.com |
 
-### ✅ Phase 5: REST API — DONE
-- FastAPI + Uvicorn (`api/main.py`)
-- Endpoints: curricula, knowledge (articles, triples), health check
-- Swagger UI at `/docs`
+### Browse API — DONE
+- `GET /api/knowledge/domains` — list all domains with topic counts
+- `GET /api/knowledge/topics` — list all topics with concept counts
+- `GET /api/knowledge/topics/{slug}` — topic detail with concepts
+- `GET /api/knowledge/concepts/slug/{topic_slug}/{concept_slug}` — full concept detail (examples, exercises, relationships)
+- `GET /api/knowledge/concepts/{id}` — concept detail by ID
 
-### ✅ Phase 6: Triple Quality Filter — DONE
-- 6 rule-based hallucination filters (`pipeline/triple_filter.py`)
-- Quality scoring (0.0–1.0)
-- 24 unit tests passing
-
-### ✅ Phase 7: Vector Database & Semantic Search — DONE
-- Weaviate in Docker (`docker-compose.yml`)
-- Ollama nomic-embed-text embeddings (`pipeline/embedder.py`)
-- Semantic search API (`api/routes/search.py`)
-- Integration tests (`test_embeddings.py`)
-
-### ✅ Phase 8: Design Blueprint — DONE
-- Product vision defined: ML/AI Engineer learning tool
-- MVP scope: 7 domains covering the project's own tech stack
-- 4 content layers: Theory, ELI5, Examples, Exercises
-- Complete data model with 7 new tables
-- API contracts for React frontend
-- Written to `DESIGN.md`
-
-### ✅ Phase 9A: New Data Model — DONE
-- 7 new SQLAlchemy tables: domains, topics, concepts, concept_relationships, examples, exercises, source_sections
-- RelationshipType enum (7 types) with Python Enum + PostgreSQL CHECK constraints
-- topic_id FK added to raw_articles (nullable for backwards compat)
-- Alembic initialized for version-controlled schema migrations
-- Seed data: 6 domains, 23 topics with source_urls
-- Test script: 7 verification categories, all passing
-
-### ✅ Phase 9B: Multi-Source Scraping — DONE
-- Generic DocsScraper base class with configurable CSS selectors
-- 10 site-specific scrapers: Python, FastAPI, SQLAlchemy, LangChain, Docker, Weaviate, PostgreSQL, Pydantic, Playwright, GitHub
-- ScrapedPage Pydantic model (extends RawScrapedArticle with raw_html + sections)
-- Section parser: splits articles into heading-based sections -> source_sections table
-- MultiSourceScraper orchestrator: reads topics from DB, routes URLs, scrapes, stores
-- 64 source URLs across 23 topics, all routable to correct scrapers
-- scrape_all.py entry point for live scraping
-
-### ✅ Phase 9C-1: Concept Extraction — DONE
-- Pydantic models: ExtractedConcept, ConceptExtractionResult, ExtractedRelationship (models/enrichment.py)
-- ConceptExtractor pipeline: reads articles per topic, sends to Gemma 4, validates, deduplicates by slug
-- enrich_concepts.py entry point (supports --topic ID, --dry-run, --model flags)
-- 176 concepts extracted across 16 of 23 topics
-- 7 topics have 0 concepts: 3 have no articles (LLM Fundamentals, LangChain, Git & GitHub),
-  2 have too-little content (Embeddings & Vectors, RAG Architecture — 174 chars each),
-  SQL Fundamentals (312 chars, LLM times out), Playwright (only 2 concepts from limited content)
-
-### ✅ Phase 9C-2: ELI5 + Relationship Extraction — DONE
-- ELI5Generator pipeline: generates analogy-based explanations for each concept (temperature=0.7)
-- RelationshipExtractor pipeline: extracts typed edges between concepts per topic (7 relationship types)
-- 175/176 concepts have ELI5 explanations (99.4% coverage)
-- 32 typed relationships extracted across 6 topics (medium-sized: 2-9 concepts)
-- enrich_eli5.py entry point (--concept ID, --force, --limit flags)
-- enrich_relationships.py entry point (--topic ID, --dry-run flags)
-- Large topics (10+ concepts) time out — Gemma 4 struggles with long JSON generation.
-  Future fix: split large topics into sub-batches of ~6 concepts for relationship extraction.
-
----
-
-### ✅ Phase 9C-3: Examples + Exercises — CODE COMPLETE
-- Pydantic models: GeneratedExample, GeneratedExercise, ExampleGenerationResult, ExerciseGenerationResult (models/enrichment.py)
-- ExampleGenerator pipeline: generates 2-3 code examples per concept via Gemma 4 (temperature=0.4)
-- ExerciseGenerator pipeline: generates 1-2 practice exercises per concept via Gemma 4 (temperature=0.3)
-- Both pipelines: Pydantic validation → SQLAlchemy upsert, idempotent (skips existing), --force flag
-- enrich_examples.py entry point (--concept ID, --force, --limit, --dry-run flags)
-- enrich_exercises.py entry point (--concept ID, --force, --limit, --dry-run flags)
-- test_phase9c3.py verification script (7 test categories)
-- Next: Run live generation with `python enrich_examples.py` then `python enrich_exercises.py`
+### Known Issues
+- **7 topics have 0 concepts**: 3 have no articles (LLM Fundamentals, LangChain, Git & GitHub), 2 have too little content (<200 chars), SQL Fundamentals times out, Playwright has only 2 concepts
+- **Large topics timeout**: Topics with 10+ concepts timeout during relationship extraction. Fix: batch into sub-groups of ~6
+- **browse.py responses**: Uses `return dict, status_code` tuples instead of `HTTPException` for error cases
+- **AiTutor is a shell**: UI exists but no chat logic (blocked on Phase 9D)
+- **Graph/Path pages are placeholders**: Static text, no visualization
+- **Stripe integration is stubs**: Returns static JSON
 
 ---
 
@@ -133,90 +91,18 @@ tech stack through knowledge graphs, simple explanations, code examples, and exe
 
 ---
 
-## File Map — What Every File Does
+## Pre-Requisite: Live Run of Phase 9C-3
 
-```
-CONFIGURATION:
-  .clinerules / .opencode/rules.md   — AI coding assistant rules & teaching protocol
-  .env                               — DB credentials, model names, API keys
-  docker-compose.yml                  — PostgreSQL 16 + Weaviate services
-  requirements.txt                    — Python dependencies
+Before starting 9D, run the enrichment generators to populate examples and exercises:
 
-DATABASE LAYER (database/):
-  connection.py     — SQLAlchemy engine, session factory, Base class
-  models.py         — ORM tables: RawArticle, KnowledgeTripleDB, + Phase 9A tables
-  seed_data.py      — Seed data: 6 domains, 23 topics (Phase 9A)
-  vector_store.py   — Weaviate client: store/search/health check
+```bash
+# Requires Ollama running with model pulled
+ollama pull qwen3.5:27b    # or whatever LLM_BRAIN_MODEL is set to
+ollama pull qwen3.5:9b     # or whatever LLM_WORKER_MODEL is set to
 
-PYDANTIC MODELS (models/):
-  content.py        — ScrapedContent, RawScrapedArticle (scraper validation)
-  scraped_page.py   — ScrapedPage, ScrapedSection (Phase 9B enriched scraping)
-  knowledge.py      — KnowledgeTriple, TripleExtraction (LLM output validation)
-  curriculum.py     — Curriculum, Module, Lesson (AI curriculum validation)
-  enrichment.py     — ExtractedConcept, ConceptExtractionResult, ExtractedRelationship, GeneratedExample, GeneratedExercise (Phase 9C-1/9C-3)
-
-SCRAPERS (scraper/):
-  base_scraper.py         — BaseScraper: Playwright browser, fetch_page(), extract_links()
-  docs_scraper.py         — DocsScraper: generic configurable docs scraper (Phase 9B)
-  mdn_scraper.py          — MDNScraper: MDN-specific CSS selectors
-  python_docs_scraper.py  — Python docs (Sphinx) scraper
-  fastapi_scraper.py      — FastAPI docs (MkDocs Material) scraper
-  sqlalchemy_scraper.py   — SQLAlchemy docs (Sphinx) scraper
-  langchain_scraper.py    — LangChain docs (Mintlify) scraper
-  docker_scraper.py       — Docker docs scraper
-  weaviate_scraper.py     — Weaviate docs scraper
-  postgresql_scraper.py   — PostgreSQL docs (Sphinx) scraper
-  pydantic_scraper.py     — Pydantic docs scraper
-  playwright_docs_scraper.py — Playwright Python docs scraper
-  github_scraper.py       — GitHub README/docs scraper
-
-PIPELINE (pipeline/):
-  text_chunker.py          — Splits articles into ~1000-char overlapping chunks
-  triple_extractor.py      — LangChain + Ollama -> extracts (subject, predicate, object) triples
-  triple_filter.py         — 6 quality filters + scoring (0.0-1.0)
-  curriculum_agent.py      — LangChain + Ollama -> generates structured curricula
-  embedder.py              — Ollama nomic-embed-text -> 768D vectors for semantic search
-  section_parser.py        — Parses HTML sections -> source_sections table (Phase 9B)
-  multi_source_scraper.py  — Orchestrator: routes URLs, scrapes, stores (Phase 9B)
-  concept_extractor.py     — LLM concept extraction per topic with slug dedup (Phase 9C-1)
-  eli5_generator.py        — LLM ELI5 analogy generation per concept (Phase 9C-2)
-  relationship_extractor.py — LLM typed relationship extraction per topic (Phase 9C-2)
-  example_generator.py   — LLM code example generation per concept (Phase 9C-3)
-  exercise_generator.py  — LLM exercise generation per concept (Phase 9C-3)
-
-API (api/):
-  main.py               — FastAPI app, CORS, route registration, startup event
-  routes/curricula.py   — GET/POST curricula endpoints
-  routes/knowledge.py   — GET articles, GET triples endpoints
-  routes/search.py      — POST semantic search, GET health
-  schemas/responses.py  — Pydantic response models
-
-SCRIPTS & TESTS:
-  main.py               — Full pipeline orchestrator (5 steps)
-  scrape_all.py          — Multi-source scraper entry point (Phase 9B)
-  enrich_concepts.py     — Concept extraction entry point, --topic/--dry-run flags (Phase 9C-1)
-  enrich_eli5.py         — ELI5 generation entry point, --concept/--force flags (Phase 9C-2)
-  enrich_relationships.py — Relationship extraction entry point, --topic/--dry-run flags (Phase 9C-2)
-  enrich_examples.py     — Example generation entry point, --concept/--force/--limit/--dry-run flags (Phase 9C-3)
-  enrich_exercises.py    — Exercise generation entry point, --concept/--force/--limit/--dry-run flags (Phase 9C-3)
-  test_db_setup.py       — Database connection test
-  test_scraper.py        — Scraper integration test
-  test_curriculum.py     — Curriculum generation test
-  test_triple_filter.py  — 24 unit tests for quality filter
-  test_embeddings.py     — Embedding & vector store tests
-  test_phase9a.py        — Phase 9A verification (7 test categories)
-  test_phase9b.py        — Phase 9B verification (6 test categories)
-  test_phase9c1.py       — Phase 9C-1 verification (6 test categories)
-  test_phase9c2.py       — Phase 9C-2 verification (7 test categories)
-  test_phase9c3.py       — Phase 9C-3 verification (7 test categories)
-  scripts/cleanup_triples.py — DB cleanup tool (dry-run/live)
-
-DOCUMENTATION:
-  DESIGN.md          — Product blueprint (THE master plan for future work)
-  ARCHITECTURE.md    — Deep technical explanations of every component
-  README.md          — Project overview, setup, roadmap
-  TESTING_GUIDE.md   — How to run each test
-  HANDOFF.md         — THIS FILE — session state handoff
+python enrich_examples.py       # Generate 2-3 examples per concept (~1-2 hrs)
+python enrich_exercises.py      # Generate 1-2 exercises per concept (~1-2 hrs)
+python test_phase9c3.py         # Verify (7 test categories)
 ```
 
 ---
@@ -225,14 +111,21 @@ DOCUMENTATION:
 
 ### Required Services
 ```bash
-docker compose up -d          # Starts PostgreSQL (port 5432) + Weaviate (port 8080)
-ollama pull gemma4:26b        # LLM for extraction/curriculum
-ollama pull nomic-embed-text  # Embedding model for semantic search
+docker compose up -d          # PostgreSQL (5432) + Weaviate (8080)
+ollama pull qwen3.5:27b       # Brain model (extraction, relationships)
+ollama pull qwen3.5:9b        # Worker model (ELI5, examples, exercises)
+ollama pull nomic-embed-text  # Embedding model
 ```
 
 ### Run the Pipeline
 ```bash
-python main.py                # Full pipeline: scrape → extract → filter → embed → curriculum
+python main.py                # Original pipeline: scrape → extract → filter → embed → curriculum
+python scrape_all.py          # Multi-source scraper (Phase 9B)
+python enrich_concepts.py     # Concept extraction (Phase 9C-1)
+python enrich_eli5.py         # ELI5 generation (Phase 9C-2)
+python enrich_relationships.py # Relationship extraction (Phase 9C-2)
+python enrich_examples.py     # Example generation (Phase 9C-3)
+python enrich_exercises.py    # Exercise generation (Phase 9C-3)
 ```
 
 ### Run the API
@@ -241,55 +134,200 @@ uvicorn api.main:app --reload --port 8000
 # Swagger UI: http://localhost:8000/docs
 ```
 
+### Run the Frontend
+```bash
+cd frontend
+npm install
+npx prisma generate
+npm run dev
+# App: http://localhost:3000
+```
+
 ---
 
-## Key Design Decisions (from DESIGN.md)
+## Model Configuration (Fast-Slow Architecture)
 
-1. **Concepts vs Triples:** Triples are raw (subject, predicate, object) strings. Concepts
-   are first-class entities with IDs, categories, explanations. Concept relationships are
-   typed edges between concept IDs. Migration path: triples → concept relationships.
+The pipeline uses two models configured via `.env`:
 
-2. **4 Content Layers:** Every concept has Theory (scraped), ELI5 (LLM-generated),
-   Examples (scraped + generated), Exercises (LLM-generated).
+| Role | Env Var | Default | Purpose |
+|------|---------|---------|---------|
+| Brain | `LLM_BRAIN_MODEL` | `qwen3.5:27b` | Concept extraction, relationships (needs reasoning) |
+| Worker | `LLM_WORKER_MODEL` | `qwen3.5:9b` | ELI5, examples, exercises (needs speed) |
+
+See `config/models.py` for the configuration and `config/__init__.py`.
+
+---
+
+## Key Design Decisions
+
+1. **Concepts vs Triples:** Triples are raw (subject, predicate, object) strings. Concepts are first-class entities with IDs, categories, explanations. Concept relationships are typed edges between concept IDs.
+
+2. **4 Content Layers:** Every concept has Theory (scraped), ELI5 (LLM-generated), Examples (scraped + generated), Exercises (LLM-generated).
 
 3. **7 Relationship Types:** requires, enables, is_a, part_of, related_to, contrasts_with, built_on
 
-4. **$0 Cost:** Everything local — Ollama, Docker, PostgreSQL, Weaviate. No cloud.
+4. **$0 Dev Cost:** Everything local — Ollama, Docker, PostgreSQL, Weaviate. No cloud.
 
-5. **MVP Scope:** Only the ML/AI engineer tech stack. Scale to other domains later.
+5. **SaaS Architecture:** Vercel (Next.js) + Railway (FastAPI) + Supabase (Auth + PostgreSQL) + Stripe (payments). See DESIGN_SAAS.md.
+
+6. **Dual ORM:** SQLAlchemy manages content tables (backend). Prisma manages user tables (frontend). Same PostgreSQL database.
 
 ---
 
-## MCP Servers Available (Cline Configuration)
+## File Map — What Every File Does
 
-These MCP tools are configured and available:
-- **filesystem** — File read/write at `C:\Users\rafa\Projects`
-- **github** — GitHub API (repos, issues, PRs, files)
-- **context7** — Library documentation lookup
-- **sequential-thinking** — Step-by-step reasoning
-- **brave-search** — Web search
-- **puppeteer** — Browser automation
-- **postgres** — Direct PostgreSQL queries on `forex_ml` database
-- **fetch** — HTTP requests (HTML, Markdown, JSON, YouTube transcripts)
+```
+CONFIGURATION:
+  .opencode/rules.md    — AI coding assistant rules & teaching protocol
+  .env                  — DB credentials, model names, Supabase keys
+  config/__init__.py    — Package init
+  config/models.py      — LLM model configuration (brain/worker architecture)
+  opencode.json         — OpenCode configuration
+  docker-compose.yml    — PostgreSQL 16 + Weaviate services
+  requirements.txt      — Python dependencies
+
+DATABASE LAYER (database/):
+  connection.py     — SQLAlchemy engine, session factory, Base class
+  models.py         — ORM tables: RawArticle, KnowledgeTripleDB, Domain, Topic, Concept,
+                      ConceptRelationship, Example, Exercise, SourceSection
+  seed_data.py      — Seed data: 6 domains, 23 topics
+  vector_store.py   — Weaviate client: store/search/health check
+
+PYDANTIC MODELS (models/):
+  content.py        — ScrapedContent, RawScrapedArticle
+  scraped_page.py   — ScrapedPage, ScrapedSection
+  knowledge.py      — KnowledgeTriple, TripleExtraction
+  curriculum.py     — Curriculum, Module, Lesson
+  enrichment.py     — ExtractedConcept, ConceptExtractionResult, ExtractedRelationship,
+                      GeneratedExample, GeneratedExercise, ExampleGenerationResult,
+                      ExerciseGenerationResult
+
+SCRAPERS (scraper/):
+  base_scraper.py              — BaseScraper: Playwright browser, fetch_page(), extract_links()
+  docs_scraper.py              — DocsScraper: generic configurable docs scraper
+  mdn_scraper.py               — MDNScraper
+  python_docs_scraper.py       — Python docs
+  fastapi_scraper.py           — FastAPI docs
+  sqlalchemy_scraper.py        — SQLAlchemy docs
+  langchain_scraper.py         — LangChain docs
+  docker_scraper.py            — Docker docs
+  weaviate_scraper.py          — Weaviate docs
+  postgresql_scraper.py        — PostgreSQL docs
+  pydantic_scraper.py          — Pydantic docs
+  playwright_docs_scraper.py   — Playwright Python docs
+  github_scraper.py            — GitHub README/docs
+
+PIPELINE (pipeline/):
+  text_chunker.py              — Splits articles into ~1000-char overlapping chunks
+  triple_extractor.py          — LangChain + Ollama → (subject, predicate, object) triples
+  triple_filter.py             — 6 quality filters + scoring (0.0-1.0)
+  curriculum_agent.py          — LangChain + Ollama → structured curricula
+  embedder.py                  — nomic-embed-text → 768D vectors for semantic search
+  section_parser.py            — HTML → heading-based sections → source_sections table
+  multi_source_scraper.py      — Orchestrator: routes URLs, scrapes, stores
+  concept_extractor.py         — LLM concept extraction per topic with slug dedup
+  eli5_generator.py            — LLM ELI5 analogy generation per concept
+  relationship_extractor.py    — LLM typed relationship extraction per topic
+  example_generator.py         — LLM code example generation per concept
+  exercise_generator.py        — LLM exercise generation per concept
+  json_utils.py                — Robust LLM JSON extraction with repair fallback
+
+API (api/):
+  main.py                      — FastAPI app, CORS, route registration, startup event
+  routes/curricula.py          — GET/POST curricula endpoints
+  routes/knowledge.py          — GET articles, GET triples endpoints
+  routes/search.py             — POST semantic search, GET health
+  routes/browse.py             — GET /api/knowledge/* browsing endpoints
+  schemas/responses.py         — Pydantic response models
+
+FRONTEND (frontend/):
+  src/app/(public)/            — Landing, catalog, pricing, topic preview, login, signup
+  src/app/(dashboard)/         — 3-panel learning interface
+    dashboard/                 — Topic overview with concept counts
+    learn/[topicSlug]/         — Topic detail, concept detail (4-tab), graph, path
+    generate/                  — On-demand curriculum generation (placeholder)
+    settings/                  — Profile & subscription (placeholder)
+  src/app/api/                 — BFF proxy to FastAPI, Stripe stubs
+  src/components/layout/       — CurriculumSidebar, AiTutor (shell)
+  src/components/learning/     — TheoryTab, Eli5Tab, ExamplesTab, ExercisesTab
+  src/components/shared/       — PaywallGate (pass-through)
+  src/components/ui/           — Button (shadcn)
+  src/lib/                     — api.ts, auth.ts, db.ts, supabase-client.ts, utils.ts
+  prisma/schema.prisma         — User, Enrollment, Progress, GenerationJob models
+
+ENTRY POINTS:
+  main.py                      — Original full pipeline orchestrator
+  scrape_all.py                — Multi-source scraper entry point
+  enrich_concepts.py           — Concept extraction (--topic, --dry-run)
+  enrich_eli5.py               — ELI5 generation (--concept, --force)
+  enrich_relationships.py      — Relationship extraction (--topic, --dry-run)
+  enrich_examples.py           — Example generation (--concept, --force, --limit, --dry-run)
+  enrich_exercises.py          — Exercise generation (--concept, --force, --limit, --dry-run)
+
+TESTS:
+  test_triple_filter.py        — 24 unit tests for quality filter
+  test_scraper.py              — Scraper integration test
+  test_db_setup.py             — Database connection test
+  test_curriculum.py           — Curriculum generation test
+  test_embeddings.py           — Embedding & vector store tests
+  test_phase9a.py              — Phase 9A verification (7 categories)
+  test_phase9b.py              — Phase 9B verification (6 categories)
+  test_phase9c1.py             — Phase 9C-1 verification (6 categories)
+  test_phase9c2.py             — Phase 9C-2 verification (7 categories)
+  test_phase9c3.py             — Phase 9C-3 verification (7 categories)
+
+DOCUMENTATION:
+  README.md                    — Project overview and unified roadmap
+  DESIGN.md                    — Product blueprint (THE master plan)
+  DESIGN_SAAS.md               — SaaS architecture (kodastudy.com launch plan)
+  ARCHITECTURE.md              — Deep technical explanations
+  TESTING_GUIDE.md             — How to run each test
+  HANDOFF.md                   — THIS FILE — session state handoff
+  RUN_COMMANDS.md              — Development commands reference
+```
 
 ---
 
 ## Full Phase Roadmap
 
 ```
-✅ Phase 1:  Database Foundation
-✅ Phase 2:  Web Scraping (Playwright + MDN)
-✅ Phase 3:  Knowledge Extraction (LLM triples)
-✅ Phase 4:  Curriculum Generation (LLM curricula)
-✅ Phase 5:  REST API (FastAPI)
-✅ Phase 6:  Triple Quality Filter
-✅ Phase 7:  Vector Database & Semantic Search (Weaviate)
-✅ Phase 8:  Design Blueprint (DESIGN.md)
-✅ Phase 9A: New Data Model + Seed Data
-✅ Phase 9B: Multi-Source Scraping (10 scrapers, 64 URLs)
-✅ Phase 9C-1: Concept Extraction (176 concepts, 16 topics)
-✅ Phase 9C-2: ELI5 + Relationships (175 ELI5s, 32 edges)
-🔜 Phase 9C-3: Examples + Exercises
-   Phase 9D: RAG Chatbot
-   Phase 9E: Graph Traversal & Learning Paths
-   Phase 10: React Frontend
+BACKEND PIPELINE:
+  ✅ Phase 1:  Database Foundation
+  ✅ Phase 2:  Web Scraping (Playwright + MDN)
+  ✅ Phase 3:  Knowledge Extraction (LLM triples)
+  ✅ Phase 4:  Curriculum Generation (LLM curricula)
+  ✅ Phase 5:  REST API (FastAPI)
+  ✅ Phase 6:  Triple Quality Filter
+  ✅ Phase 7:  Vector Database & Semantic Search (Weaviate)
+  ✅ Phase 8:  Design Blueprint
+  ✅ Phase 9A: New Data Model (7 tables, Alembic, seed data)
+  ✅ Phase 9B: Multi-Source Scraping (10 scrapers, 52 articles)
+  ✅ Phase 9C-1: Concept Extraction (176 concepts)
+  ✅ Phase 9C-2: ELI5 + Relationships (175 ELI5s, 32 edges)
+  ✅ Phase 9C-3: Examples + Exercises (code complete, DB pending)
+  🔜 Phase 9D: RAG Chatbot
+  🔜 Phase 9E: Graph Traversal & Learning Paths
+
+SAAS PRODUCT:
+  ✅ Phase 11A: Frontend Setup (Next.js 15, Tailwind, shadcn, Supabase, Prisma)
+  ✅ Phase 11B: Public Pages (landing, catalog, pricing, auth)
+  ✅ Phase 11C: Dashboard + Learning Interface (3-panel, 4-tab concept view)
+  🔜 Phase 11D: AI Tutor + Knowledge Graph Visualization
+  🔜 Phase 11E: Premium Features (Stripe, paywall, generation)
+  🔜 Phase 12:  FastAPI Enhancements (auth middleware, cloud LLM)
+  🔜 Phase 13:  Production Deployment (kodastudy.com)
+```
+
+---
+
+## Session-by-Session Plan (Next Steps)
+
+| Session | Phase | Task |
+|---------|-------|------|
+| Current | 9C-3 | Run `enrich_examples.py` + `enrich_exercises.py` to populate DB |
+| Next | 9D | RAG chatbot: embed sections, `/api/chat`, `/api/search/suggest` |
+| +1 | 9E | Graph traversal: BFS/DFS, `/api/graph`, `/api/graph/path` |
+| +2 | 11D | Frontend: wire AiTutor, build KnowledgeGraphView + LearningPathView |
+| +3 | 11E | Stripe integration, PaywallGate, on-demand generation |
+| +4 | 12 | FastAPI auth middleware, cloud LLM swap, pagination |
+| +5 | 13 | Deploy: Vercel + Railway, kodastudy.com, seed production |
