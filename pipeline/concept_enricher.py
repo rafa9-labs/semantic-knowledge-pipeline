@@ -155,14 +155,12 @@ class ConceptEnricher:
         with SessionLocal() as session:
             query = session.query(Concept)
             if not force:
-                from sqlalchemy import cast, Text, type_coerce
-                from sqlalchemy.dialects.postgresql import JSON
-                empty_json = type_coerce("[]", JSON)
+                from sqlalchemy import cast, Text
                 query = query.filter(
-                    (Concept.key_points.is_(None))
-                    | (Concept.key_points == empty_json)
-                    | (Concept.common_mistakes.is_(None))
-                    | (Concept.common_mistakes == empty_json)
+                    Concept.key_points.is_(None)
+                    | (cast(Concept.key_points, Text) == "[]")
+                    | Concept.common_mistakes.is_(None)
+                    | (cast(Concept.common_mistakes, Text) == "[]")
                 )
             concepts = query.all()
             total = session.query(Concept).count()

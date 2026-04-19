@@ -24,12 +24,10 @@ async def main():
         with SessionLocal() as session:
             query = session.query(Concept)
             if not args.force:
-                from sqlalchemy import type_coerce
-                from sqlalchemy.dialects.postgresql import JSON
-                empty_json = type_coerce("[]", JSON)
+                from sqlalchemy import cast, Text
                 query = query.filter(
-                    (Concept.key_points.is_(None))
-                    | (Concept.key_points == empty_json)
+                    Concept.key_points.is_(None)
+                    | (cast(Concept.key_points, Text) == "[]")
                 )
             concepts = query.all()
             if args.limit:
