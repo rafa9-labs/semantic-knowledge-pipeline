@@ -47,69 +47,68 @@ from pipeline.json_utils import repair_json, extract_json
 logger = logging.getLogger(__name__)
 
 
-EXAMPLE_GENERATION_PROMPT = """You are an expert programming instructor who creates clear, educational code examples.
+EXAMPLE_GENERATION_PROMPT = """You are an expert programming instructor who creates clear, educational code examples with progressive difficulty.
 
-Your job: Given a programming concept, generate 2-3 practical code examples that help a learner understand it.
+Your job: Given a programming concept, generate exactly 3 code examples with INCREASING difficulty.
+
+STRUCTURE — You MUST generate exactly these 3 examples:
+
+**Example 1: "Getting Started"** (difficulty_level: 1)
+- The absolute simplest usage of this concept (3-8 lines of actual code)
+- Shows basic syntax and what the output looks like
+- No error handling, no edge cases — just the raw concept
+- Title format: "Getting Started — [what it does]"
+- when_to_use: "Use this when you first need to understand what [concept] looks like in code."
+
+**Example 2: "Real-World Usage"** (difficulty_level: 2)
+- A practical, realistic scenario (10-20 lines)
+- Uses real variable names, realistic data, imports included
+- Shows how this concept is used in an actual application
+- Title format: "Real-World Usage — [scenario description]"
+- when_to_use: "Use this pattern when [specific practical scenario]."
+
+**Example 3: "Advanced Pattern"** (difficulty_level: 3)
+- Best practices, error handling, or integration with related concepts (10-25 lines)
+- Shows production-quality usage: error handling, edge cases, or combining with other patterns
+- Title format: "Advanced Pattern — [pattern name or technique]"
+- when_to_use: "Apply this when [complex scenario requiring expertise]."
 
 RULES:
-1. Each example should demonstrate a DIFFERENT aspect or difficulty level of the concept.
-2. Code must be COMPLETE and RUNNABLE — no pseudocode, no missing imports, no "..." placeholders.
-3. Use realistic, practical scenarios — not "hello world" or "foo/bar" examples.
-4. Keep examples concise (5-25 lines of actual code). Quality over quantity.
-5. The first example should be the simplest, most direct usage.
-6. Later examples should show more advanced or real-world usage.
-7. Provide a brief explanation (1-3 sentences) annotating key lines.
-8. Match the language to the concept's domain:
-   - Python concepts → "python"
-   - SQL concepts → "sql"
-   - Docker concepts → "bash" or "dockerfile" or "yaml"
-   - General concepts → use the most common language for that domain
-   - If unsure about language, use "python"
-9. CRITICAL: All string values (especially "code") must be properly escaped.
-   Use \\n for newlines, \\t for tabs, \\\" for quotes inside strings.
-   Do NOT use raw newlines inside JSON string values.
+1. All code must be COMPLETE and RUNNABLE — no pseudocode, no "...", no "TODO".
+2. Use realistic scenarios — NOT "hello world", "foo/bar", or "dummy data".
+3. Each example gets a brief explanation (1-3 sentences annotating key lines).
+4. Match language to the concept's domain (Python → "python", SQL → "sql", Docker → "bash"/"yaml").
+5. CRITICAL: All string values must use \\n for newlines, \\\" for quotes. No raw newlines in JSON strings.
 
 You MUST respond with ONLY valid JSON:
 {
   "examples": [
     {
-      "title": "Short descriptive title (5+ words)",
+      "title": "Getting Started — [what it does]",
       "code": "the actual code snippet",
       "language": "python",
-      "explanation": "Brief annotation of what the code does and why"
+      "explanation": "Brief annotation of what the code does and why",
+      "when_to_use": "Use this when...",
+      "difficulty_level": 1
     },
     {
-      "title": "Another example title",
+      "title": "Real-World Usage — [scenario]",
       "code": "more code",
       "language": "python",
-      "explanation": "Brief annotation"
-    }
-  ]
-}
-
-GOOD EXAMPLE for "async/await" (python):
-{
-  "examples": [
-    {
-      "title": "Basic async function that fetches data",
-      "code": "import asyncio\\n\\nasync def fetch_user(user_id: int) -> dict:\\n    await asyncio.sleep(1)\\n    return {'id': user_id, 'name': f'User {user_id}'}\\n\\nresult = asyncio.run(fetch_user(42))\\nprint(result)",
-      "language": "python",
-      "explanation": "async def creates a coroutine. await asyncio.sleep simulates an I/O delay. asyncio.run executes the coroutine on the event loop."
+      "explanation": "Brief annotation",
+      "when_to_use": "Use this pattern when...",
+      "difficulty_level": 2
     },
     {
-      "title": "Running multiple async operations concurrently",
-      "code": "import asyncio\\n\\nasync def fetch_user(uid: int) -> dict:\\n    await asyncio.sleep(1)\\n    return {'id': uid}\\n\\nasync def fetch_all() -> list[dict]:\\n    tasks = [fetch_user(i) for i in range(5)]\\n    return await asyncio.gather(*tasks)\\n\\nresults = asyncio.run(fetch_all())\\nprint(f'Fetched {len(results)} users')",
+      "title": "Advanced Pattern — [technique]",
+      "code": "advanced code",
       "language": "python",
-      "explanation": "asyncio.gather runs multiple coroutines concurrently. The list comprehension creates 5 coroutine tasks. gather returns results in the same order as the input tasks."
+      "explanation": "Brief annotation",
+      "when_to_use": "Apply this when...",
+      "difficulty_level": 3
     }
   ]
 }
-
-BAD EXAMPLES (avoid these):
-- Code with "..." or "TODO" or "your code here"
-- Examples longer than 30 lines
-- Titles like "Example 1" or "Code snippet" (not descriptive)
-- Pseudocode that can't actually run
 """
 
 
@@ -175,14 +174,23 @@ class ExampleGenerator:
             concept_category = concept.category
             concept_difficulty = concept.difficulty
             concept_theory = concept.theory_text or "No formal description available."
+            concept_eli5 = concept.simple_explanation or ""
+            concept_key_points = concept.key_points or []
 
-        prompt_text = (
-            f"Generate {self.examples_per_concept} code examples for this concept:\n\n"
-            f"**Name:** {concept_name}\n"
-            f"**Category:** {concept_category}\n"
-            f"**Difficulty:** {concept_difficulty}/5\n"
-            f"**Description:** {concept_theory[:600]}"
-        )
+        context_parts = [
+            f"Generate 3 progressive code examples for this concept:\n",
+            f"**Name:** {concept_name}",
+            f"**Category:** {concept_category}",
+            f"**Difficulty:** {concept_difficulty}/5",
+            f"\n**Technical description:** {concept_theory}",
+        ]
+        if concept_eli5:
+            context_parts.append(f"\n**Simple explanation:** {concept_eli5}")
+        if concept_key_points:
+            points_str = "\n".join(f"  - {p}" for p in concept_key_points[:5])
+            context_parts.append(f"\n**Key points:**\n{points_str}")
+
+        prompt_text = "\n".join(context_parts)
 
         messages = [
             SystemMessage(content=EXAMPLE_GENERATION_PROMPT),
@@ -281,6 +289,8 @@ class ExampleGenerator:
                     explanation=ex.explanation,
                     source_url=None,
                     source_type="generated",
+                    when_to_use=ex.when_to_use,
+                    difficulty_level=ex.difficulty_level,
                     sort_order=existing_count + i,
                 )
                 session.add(db_example)

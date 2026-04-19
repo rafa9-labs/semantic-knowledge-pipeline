@@ -4,6 +4,7 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import { getExampleLevel } from "@/lib/colors";
 
 interface Example {
   id: number;
@@ -13,6 +14,8 @@ interface Example {
   language: string;
   explanation: string | null;
   source_type: string;
+  when_to_use: string | null;
+  difficulty_level: number | null;
 }
 
 interface ExamplesTabProps {
@@ -44,45 +47,63 @@ export function ExamplesTab({ examples }: ExamplesTabProps) {
         </span>
       </div>
 
-      {examples.map((example) => (
-        <div key={example.id} className="rounded-xl border border-border overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
-            <div>
-              <h3 className="text-sm font-medium">{example.title}</h3>
-              {example.description && (
-                <p className="text-xs text-muted-foreground mt-0.5">{example.description}</p>
-              )}
-            </div>
-            <span className="rounded-full bg-background border border-border px-2 py-0.5 text-xs font-mono text-muted-foreground">
-              {example.language}
-            </span>
-          </div>
+      {examples.map((example) => {
+        const level = getExampleLevel(example.difficulty_level ?? 1);
 
-          <div className="overflow-x-auto">
-            <div className="prose prose-invert prose-pre:bg-zinc-900 prose-pre:m-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:p-4 prose-code:text-primary max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                {codeBlock(example.language, example.code)}
-              </ReactMarkdown>
-            </div>
-          </div>
-
-          {example.explanation && (
-            <div className="border-t border-border">
-              <button
-                onClick={() => setExpandedId(expandedId === example.id ? null : example.id)}
-                className="w-full px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
-              >
-                {expandedId === example.id ? "Hide explanation" : "Show explanation"}
-              </button>
-              {expandedId === example.id && (
-                <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {example.explanation}
+        return (
+          <div key={example.id} className="rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium truncate">{example.title}</h3>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium border-current/30 ${level.color}`}>
+                    {level.label}
+                  </span>
                 </div>
-              )}
+                {example.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{example.description}</p>
+                )}
+              </div>
+              <span className="rounded-full bg-background border border-border px-2 py-0.5 text-xs font-mono text-muted-foreground shrink-0 ml-2">
+                {example.language}
+              </span>
             </div>
-          )}
-        </div>
-      ))}
+
+            <div className="overflow-x-auto">
+              <div className="prose prose-invert prose-pre:bg-zinc-900 prose-pre:m-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:p-4 prose-code:text-primary max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                  {codeBlock(example.language, example.code)}
+                </ReactMarkdown>
+              </div>
+            </div>
+
+            {example.when_to_use && (
+              <div className="border-t border-border px-4 py-2 bg-primary/5">
+                <p className="text-xs text-primary/80">
+                  <span className="font-medium">When to use: </span>
+                  {example.when_to_use}
+                </p>
+              </div>
+            )}
+
+            {example.explanation && (
+              <div className="border-t border-border">
+                <button
+                  onClick={() => setExpandedId(expandedId === example.id ? null : example.id)}
+                  className="w-full px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
+                >
+                  {expandedId === example.id ? "Hide explanation" : "Show explanation"}
+                </button>
+                {expandedId === example.id && (
+                  <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {example.explanation}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

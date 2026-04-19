@@ -47,42 +47,38 @@ logger = logging.getLogger(__name__)
 
 ELI5_SYSTEM_PROMPT = """You are an expert teacher who explains complex programming concepts using simple, relatable analogies.
 
-Your job: Given a programming concept, its category, and a formal description, write an "Explain Like I'm 5" (ELI5) version.
+Your job: Given a programming concept, write a rich "Explain Like I'm 5" version.
+
+STRUCTURE (4-6 sentences, 80-150 words total):
+
+Sentence 1-2: THE ANALOGY — Compare the concept to something anyone would understand.
+   - "API" is like a waiter taking your order to the kitchen
+   - "Docker container" is like a lunchbox — everything your app needs in one portable box
+   - "Async/await" is like putting a letter in the mail and doing other things while waiting for a reply
+
+Sentence 3: HOW IT WORKS — Briefly explain the mechanism in plain language (no jargon).
+
+Sentence 4: WHY IT MATTERS — The practical benefit. What problem does this solve?
+
+Sentence 5-6: REAL-WORLD SCENARIO — Give a concrete example of when you'd encounter this in daily work.
 
 RULES:
-1. Use a CONCRETE REAL-WORLD ANALOGY — compare the concept to something anyone would understand.
-   - "API" is like a waiter taking your order to the kitchen
-   - "Docker container" is like a shipping container that works on any ship
-   - "Async/await" is like putting a letter in the mail and doing other things while waiting for a reply
-2. Keep it to 2-4 sentences MAXIMUM.
-3. Do NOT use jargon or technical terms in the analogy itself.
-4. After the analogy, add one sentence explaining WHY it matters (the practical benefit).
-5. Be creative — different concepts should get different analogies, not recycled ones.
+- No jargon or technical terms in the analogy itself
+- Be creative — different concepts should get different analogies, not recycled ones
+- The analogy should make someone say "oh, now I get it!"
+- Total length: 80-150 words (4-6 sentences)
 
 You MUST respond with ONLY valid JSON:
 {
-  "eli5": "Your explanation here",
-  "analogy_source": "What real-world thing you compared it to (e.g., 'restaurant waiter', 'shipping container')"
+  "eli5": "Your full explanation here (4-6 sentences, 80-150 words)",
+  "analogy_source": "What you compared it to (e.g., 'restaurant waiter', 'lunchbox')"
 }
 
-BAD EXAMPLES (too technical):
-- "async/await is syntactic sugar over Promises that allows non-blocking execution" ← jargon
-- "embeddings are dense vector representations of tokens in a latent space" ← way too technical
+BAD (too short, no depth):
+{"eli5": "A Docker container is like a lunchbox for your app.", "analogy_source": "lunchbox"}
 
-GOOD EXAMPLES:
-Input: "Docker container" (tool)
-Output:
-{
-  "eli5": "A Docker container is like a lunchbox — it packs everything your app needs (code, settings, libraries) into one portable box that works the same on any computer. This means your app runs identically on your laptop, a coworker's machine, or a cloud server.",
-  "analogy_source": "lunchbox"
-}
-
-Input: "SQL JOIN" (language_feature)
-Output:
-{
-  "eli5": "A SQL JOIN is like matching name tags at a party — you take two lists of people and connect them by a shared detail (like their company). This lets you combine information from two separate tables into one useful result.",
-  "analogy_source": "matching name tags at a party"
-}
+GOOD (rich, structured):
+{"eli5": "A Docker container is like a lunchbox — it packs everything your app needs (code, settings, libraries) into one portable box that works the same on any computer. Instead of worrying about whether the server has the right Python version or dependencies, the lunchbox brings everything with it. This means your app runs identically on your laptop, a coworker's machine, or a cloud server. You'd use this whenever you deploy an application, share code with a team, or need to run multiple services without them interfering with each other.", "analogy_source": "lunchbox"}
 """
 
 
@@ -169,7 +165,7 @@ class ELI5Generator:
                 parsed = json.loads(cleaned)
 
                 eli5_text = parsed.get("eli5", "").strip()
-                if not eli5_text or len(eli5_text) < 20:
+                if not eli5_text or len(eli5_text) < 40:
                     logger.warning(
                         f"ELI5 too short for '{concept_name}': '{eli5_text[:50]}'"
                     )

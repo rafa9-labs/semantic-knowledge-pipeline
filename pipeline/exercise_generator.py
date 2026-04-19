@@ -52,41 +52,78 @@ from pipeline.json_utils import repair_json, extract_json
 logger = logging.getLogger(__name__)
 
 
-EXERCISE_GENERATION_PROMPT = """You are an expert programming instructor who creates PRACTICE EXERCISES to help learners master programming concepts.
+EXERCISE_GENERATION_PROMPT = """You are an expert programming instructor who creates DIVERSE practice exercises.
 
-Your job: Given a programming concept, create 1-2 practice exercises that test the learner's understanding.
+Your job: Given a programming concept, generate exactly 3 exercises of DIFFERENT TYPES.
+
+EXERCISE TYPES (you MUST generate one of each):
+
+**Type 1: "predict_output"** — Multiple choice quiz
+Show a short code snippet (3-8 lines). Ask "What does this code output?"
+Provide 4 options (exactly 1 correct, 3 plausible distractors).
+Fields needed: title, description, code in solution_code, options (array of 4 {label, is_correct}), correct_answer, explanation in description.
+
+**Type 2: "fix_bug"** — Find and fix the error
+Show a code snippet with a REALISTIC bug (wrong keyword, missing import, logic error, off-by-one, wrong operator).
+The learner must identify what's wrong.
+Fields needed: title, description, buggy_code, solution_code (the fixed version), bug_explanation (what was wrong and why), 2-3 hints.
+
+**Type 3: "build_from_spec"** — Write code from requirements
+Give clear requirements for a function or small program.
+Provide starter code with a TODO. Include a complete solution.
+Fields needed: title, description, starter_code, solution_code, 3 progressive hints, test_cases with specific input/output, learning_objectives.
 
 RULES:
-1. Each exercise must be SOLVABLE — the solution_code must actually work.
-2. starter_code should have a clear TODO comment showing what to implement.
-3. solution_code must be COMPLETE, RUNNABLE, and CORRECT — include all imports.
-4. Provide 2-3 progressive hints:
-   - Hint 1: Gentle nudge (points to the right direction)
-   - Hint 2: More specific (names a function or approach)
-   - Hint 3: Nearly gives the answer (shows the key line)
-5. Provide at least 1 test case with input and expected output.
-6. Learning objectives should list 1-3 specific skills the exercise tests.
-7. Difficulty should be close to the concept's difficulty (±1).
-8. Use the same language as the concept's domain (Python for Python concepts, etc.).
-   If unsure about language, use "python".
-9. Exercises should be PRACTICAL — build something useful, not just demonstrate syntax.
-10. CRITICAL: All string values (especially "starter_code" and "solution_code") must be
-    properly escaped. Use \\n for newlines, \\t for tabs, \\\" for quotes inside strings.
-    Do NOT use raw newlines inside JSON string values.
+1. All code must be COMPLETE and RUNNABLE.
+2. Predict_output: code should be tricky enough to require understanding, not just syntax reading.
+3. Fix_bug: the bug should be a REAL mistake people make (not contrived). bug_explanation should teach WHY it's wrong.
+4. Build_from_spec: requirements must be specific and testable. test_cases must have concrete values.
+5. Difficulty: predict_output should be easiest (concept difficulty -1), build_from_spec hardest (concept difficulty +1).
+6. Use the same language as the concept's domain (Python → "python", etc.).
+7. CRITICAL: All strings must use \\n for newlines, \\\" for quotes. No raw newlines in JSON string values.
 
 You MUST respond with ONLY valid JSON:
 {
   "exercises": [
     {
-      "title": "Descriptive exercise title (7+ words)",
-      "description": "What the learner needs to build or achieve (20+ chars)",
+      "title": "Predict the output of [concept] usage",
+      "description": "What does this code print? Read carefully.",
+      "difficulty": 2,
+      "language": "python",
+      "exercise_type": "predict_output",
+      "solution_code": "import asyncio\\nresult = [x**2 for x in range(5)]\\nprint(result[-1])",
+      "options": [
+        {"label": "16", "is_correct": true},
+        {"label": "25", "is_correct": false},
+        {"label": "[0, 1, 4, 9, 16]", "is_correct": false},
+        {"label": "4", "is_correct": false}
+      ],
+      "correct_answer": "16",
+      "learning_objectives": ["Understand list indexing with negative indices"]
+    },
+    {
+      "title": "Fix the [concept] bug in this function",
+      "description": "This function has a common mistake involving [concept]. Find and fix it.",
       "difficulty": 3,
       "language": "python",
-      "starter_code": "import asyncio\\n\\ndef fetch_data(url: str) -> str:\\n    # TODO: Make this function async\\n    ...",
-      "solution_code": "import asyncio\\n\\nasync def fetch_data(url: str) -> str:\\n    await asyncio.sleep(1)\\n    return f'Data from {url}'",
-      "hints": ["Add the 'async' keyword before 'def'", "Use 'await' for the sleep call"],
-      "test_cases": [{"input": "url='http://test.com'", "expected": "'Data from http://test.com'"}],
-      "learning_objectives": ["Define async functions", "Use await for async operations"]
+      "exercise_type": "fix_bug",
+      "buggy_code": "async def fetch_data(url):\\n    response = requests.get(url)\\n    return response.json()",
+      "solution_code": "import httpx\\n\\nasync def fetch_data(url):\\n    async with httpx.AsyncClient() as client:\\n        response = await client.get(url)\\n        return response.json()",
+      "bug_explanation": "The function is declared async but uses requests.get() which is synchronous and blocks the event loop. Must use an async HTTP client like httpx with await.",
+      "hints": ["The function is async but uses a synchronous library", "async functions need 'await' for I/O operations"],
+      "learning_objectives": ["Distinguish sync vs async HTTP calls"]
+    },
+    {
+      "title": "Build a function that [task description]",
+      "description": "Write an async function that [specific requirements].",
+      "difficulty": 4,
+      "language": "python",
+      "exercise_type": "build_from_spec",
+      "starter_code": "import asyncio\\n\\nasync def fetch_many(urls: list[str]) -> list[str]:\\n    # TODO: Fetch all URLs concurrently\\n    pass",
+      "solution_code": "import asyncio\\n\\nasync def fetch_many(urls: list[str]) -> list[str]:\\n    tasks = [fetch_one(url) for url in urls]\\n    return await asyncio.gather(*tasks)",
+      "hints": ["Create a list of coroutines", "Use asyncio.gather() to run them concurrently", "gather() returns results in the same order as the input tasks"],
+      "test_cases": [{"input": "urls=['http://a.com', 'http://b.com']", "expected": "list of 2 response strings"}],
+      "learning_objectives": ["Use asyncio.gather for concurrent execution"]
     }
   ]
 }
@@ -156,19 +193,21 @@ class ExerciseGenerator:
             concept_difficulty = concept.difficulty
             concept_theory = concept.theory_text or "No formal description available."
             concept_eli5 = concept.simple_explanation or ""
+            concept_key_points = concept.key_points or []
 
         context_parts = [
-            f"Generate {self.exercises_per_concept} practice exercises for this concept:\n",
+            f"Generate 3 exercises (one of each type: predict_output, fix_bug, build_from_spec) for this concept:\n",
             f"**Name:** {concept_name}",
             f"**Category:** {concept_category}",
             f"**Difficulty:** {concept_difficulty}/5",
-            f"\n**Technical description:** {concept_theory[:500]}",
+            f"\n**Technical description:** {concept_theory}",
         ]
 
         if concept_eli5:
-            context_parts.append(
-                f"\n**Simple explanation (ELI5):** {concept_eli5[:300]}"
-            )
+            context_parts.append(f"\n**Simple explanation:** {concept_eli5}")
+        if concept_key_points:
+            points_str = "\n".join(f"  - {p}" for p in concept_key_points[:5])
+            context_parts.append(f"\n**Key points:**\n{points_str}")
 
         prompt_text = "\n".join(context_parts)
 
@@ -267,11 +306,16 @@ class ExerciseGenerator:
                     description=ex.description,
                     difficulty=ex.difficulty,
                     language=ex.language,
+                    exercise_type=ex.exercise_type,
                     starter_code=ex.starter_code,
                     solution_code=ex.solution_code,
                     hints=ex.hints,
                     test_cases=ex.test_cases,
                     learning_objectives=ex.learning_objectives,
+                    options=ex.options,
+                    correct_answer=ex.correct_answer,
+                    buggy_code=ex.buggy_code,
+                    bug_explanation=ex.bug_explanation,
                     sort_order=existing_count + i,
                 )
                 session.add(db_exercise)

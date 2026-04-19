@@ -6,6 +6,7 @@ import { TheoryTab } from "@/components/learning/TheoryTab";
 import { Eli5Tab } from "@/components/learning/Eli5Tab";
 import { ExamplesTab } from "@/components/learning/ExamplesTab";
 import { ExercisesTab } from "@/components/learning/ExercisesTab";
+import { getCategoryColor, getDifficultyColor } from "@/lib/colors";
 
 interface ConceptData {
   id: number;
@@ -27,6 +28,8 @@ interface ConceptData {
     language: string;
     explanation: string | null;
     source_type: string;
+    when_to_use: string | null;
+    difficulty_level: number | null;
   }[];
   exercises: {
     id: number;
@@ -34,10 +37,16 @@ interface ConceptData {
     description: string;
     difficulty: number;
     language: string;
+    exercise_type: string;
     starter_code: string | null;
     solution_code: string;
     hints: string[];
+    test_cases: { input: string; expected: string }[];
     learning_objectives: string[];
+    options: { label: string; is_correct: boolean }[] | null;
+    correct_answer: string | null;
+    buggy_code: string | null;
+    bug_explanation: string | null;
   }[];
   relationships: {
     outgoing: { id: number; name: string; slug: string; type: string }[];
@@ -108,17 +117,22 @@ export default function ConceptPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4">
-        <p className="text-xs text-muted-foreground capitalize">{data.category.replace(/_/g, " ")}</p>
+        <div className="flex items-center gap-2 mb-1">
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getCategoryColor(data.category).bg} ${getCategoryColor(data.category).text} ${getCategoryColor(data.category).border}`}>
+            {getCategoryColor(data.category).label}
+          </span>
+        </div>
         <h1 className="text-xl font-bold">{data.name}</h1>
         <div className="flex items-center gap-2 mt-1">
           <div className="flex gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className={`h-1 w-4 rounded-full ${i < data.difficulty ? "bg-primary" : "bg-muted"}`}
+                className={`h-1 w-4 rounded-full ${i < data.difficulty ? getDifficultyColor(data.difficulty).bar : "bg-muted"}`}
               />
             ))}
           </div>
+          <span className="text-xs text-muted-foreground">{getDifficultyColor(data.difficulty).label}</span>
         </div>
       </div>
 

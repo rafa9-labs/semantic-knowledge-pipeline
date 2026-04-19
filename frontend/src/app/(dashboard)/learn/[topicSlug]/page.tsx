@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getCategoryColor, getDifficultyColor } from "@/lib/colors";
 
 interface Concept {
   id: number;
@@ -31,19 +32,20 @@ async function getTopic(slug: string): Promise<TopicData | null> {
   }
 }
 
-const categoryIcon: Record<string, string> = {
-  language_feature: "{ }",
-  framework: "< />",
-  tool: "[ ]",
-  pattern: "* *",
-  concept: "(i)",
-};
-
 const difficultyColor: Record<string, string> = {
   beginner: "bg-green-500/10 text-green-400 border-green-500/20",
   intermediate: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
   advanced: "bg-red-500/10 text-red-400 border-red-500/20",
 };
+
+function CategoryBadge({ category }: { category: string }) {
+  const c = getCategoryColor(category);
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${c.bg} ${c.text} ${c.border}`}>
+      {c.label}
+    </span>
+  );
+}
 
 export default async function TopicPage({ params }: { params: Promise<{ topicSlug: string }> }) {
   const { topicSlug } = await params;
@@ -89,15 +91,15 @@ export default async function TopicPage({ params }: { params: Promise<{ topicSlu
             href={`/learn/${topicSlug}/concept/${concept.slug}`}
             className="group flex items-center gap-3 rounded-lg border border-border p-4 hover:border-primary/50 transition-colors"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted font-mono text-xs text-muted-foreground">
-              {categoryIcon[concept.category] || "?"}
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-mono text-xs ${getCategoryColor(concept.category).bg} ${getCategoryColor(concept.category).text}`}>
+              {getCategoryColor(concept.category).icon}
             </span>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-medium group-hover:text-primary transition-colors truncate">
                 {concept.name}
               </h3>
               <div className="flex gap-2 mt-0.5">
-                <span className="text-xs text-muted-foreground capitalize">{concept.category.replace(/_/g, " ")}</span>
+                <CategoryBadge category={concept.category} />
                 {concept.has_theory && <span className="text-xs text-muted-foreground">theory</span>}
                 {concept.has_eli5 && <span className="text-xs text-muted-foreground">ELI5</span>}
               </div>
@@ -106,7 +108,7 @@ export default async function TopicPage({ params }: { params: Promise<{ topicSlu
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className={`h-1 w-3 rounded-full ${i < concept.difficulty ? "bg-primary" : "bg-muted"}`}
+                  className={`h-1 w-3 rounded-full ${i < concept.difficulty ? getDifficultyColor(concept.difficulty).bar : "bg-muted"}`}
                 />
               ))}
             </div>

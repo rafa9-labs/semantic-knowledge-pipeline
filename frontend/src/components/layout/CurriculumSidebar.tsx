@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getCategoryColor } from "@/lib/colors";
 
 interface Topic {
   id: number;
@@ -28,6 +29,11 @@ const categoryIcons: Record<string, string> = {
   pattern: "* *",
   concept: "(i)",
 };
+
+function categoryDotClass(category: string): string {
+  const c = getCategoryColor(category);
+  return `${c.dot} w-1.5 h-1.5 rounded-full shrink-0`;
+}
 
 export function CurriculumSidebar() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -139,9 +145,7 @@ export function CurriculumSidebar() {
                                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
                               }`}
                             >
-                              <span className="font-mono text-[10px] w-4 text-center shrink-0">
-                                {categoryIcons[concept.category] || "?"}
-                              </span>
+                              <span className={categoryDotClass(concept.category)} />
                               <span className="truncate">{concept.name}</span>
                             </Link>
                           ))}

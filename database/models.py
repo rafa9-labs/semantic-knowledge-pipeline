@@ -633,12 +633,14 @@ class Example(Base):
     source_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="generated",
     )
+    when_to_use: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    difficulty_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     concept: Mapped["Concept"] = relationship("Concept", back_populates="examples")
 
     def __repr__(self) -> str:
-        return f"<Example(id={self.id}, title='{self.title}', lang='{self.language}')>"
+        return f"<Example(id={self.id}, title='{self.title}', lang='{self.language}', level={self.difficulty_level})>"
 
 
 class Exercise(Base):
@@ -670,6 +672,9 @@ class Exercise(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     difficulty: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     language: Mapped[str] = mapped_column(String(30), nullable=False)
+    exercise_type: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="build_from_spec",
+    )
     starter_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     solution_code: Mapped[str] = mapped_column(Text, nullable=False)
     hints: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
@@ -677,12 +682,16 @@ class Exercise(Base):
     learning_objectives: Mapped[dict] = mapped_column(
         JSON, nullable=False, default=list,
     )
+    options: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    correct_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    buggy_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bug_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     concept: Mapped["Concept"] = relationship("Concept", back_populates="exercises")
 
     def __repr__(self) -> str:
-        return f"<Exercise(id={self.id}, title='{self.title}', difficulty={self.difficulty})>"
+        return f"<Exercise(id={self.id}, title='{self.title}', type='{self.exercise_type}', difficulty={self.difficulty})>"
 
 
 class SourceSection(Base):

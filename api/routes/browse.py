@@ -126,6 +126,8 @@ def get_concept_by_slug(topic_slug: str, concept_slug: str):
                     "language": e.language,
                     "explanation": e.explanation,
                     "source_type": e.source_type,
+                    "when_to_use": e.when_to_use,
+                    "difficulty_level": e.difficulty_level,
                 }
                 for e in examples
             ],
@@ -136,10 +138,16 @@ def get_concept_by_slug(topic_slug: str, concept_slug: str):
                     "description": ex.description,
                     "difficulty": ex.difficulty,
                     "language": ex.language,
+                    "exercise_type": ex.exercise_type,
                     "starter_code": ex.starter_code,
                     "solution_code": ex.solution_code,
                     "hints": ex.hints,
+                    "test_cases": ex.test_cases,
                     "learning_objectives": ex.learning_objectives,
+                    "options": ex.options,
+                    "correct_answer": ex.correct_answer,
+                    "buggy_code": ex.buggy_code,
+                    "bug_explanation": ex.bug_explanation,
                 }
                 for ex in exercises
             ],
@@ -193,6 +201,8 @@ def get_concept(concept_id: int):
                     "language": e.language,
                     "explanation": e.explanation,
                     "source_type": e.source_type,
+                    "when_to_use": e.when_to_use,
+                    "difficulty_level": e.difficulty_level,
                 }
                 for e in examples
             ],
@@ -203,9 +213,16 @@ def get_concept(concept_id: int):
                     "description": ex.description,
                     "difficulty": ex.difficulty,
                     "language": ex.language,
+                    "exercise_type": ex.exercise_type,
                     "starter_code": ex.starter_code,
+                    "solution_code": ex.solution_code,
                     "hints": ex.hints,
+                    "test_cases": ex.test_cases,
                     "learning_objectives": ex.learning_objectives,
+                    "options": ex.options,
+                    "correct_answer": ex.correct_answer,
+                    "buggy_code": ex.buggy_code,
+                    "bug_explanation": ex.bug_explanation,
                 }
                 for ex in exercises
             ],

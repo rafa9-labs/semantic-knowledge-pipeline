@@ -294,55 +294,19 @@ VALID_LANGUAGES = {
 
 
 class GeneratedExample(BaseModel):
-    """
-    A single code example for a concept, produced by our LLM.
-
-    The LLM generates examples with a title, the code itself, the language,
-    and an optional line-by-line explanation. Pydantic validates structure
-    before we insert into the `examples` table.
-
-    Example:
-        GeneratedExample(
-            title="Creating a basic async function",
-            code="async def fetch(url):\\n    ...",
-            language="python",
-            explanation="Line 1: async def declares a coroutine function..."
-        )
-    """
-
-    title: str = Field(
-        ...,
-        min_length=5,
-        max_length=300,
-        description="Short title describing what this example demonstrates",
-    )
-
-    code: str = Field(
-        ...,
-        min_length=10,
-        max_length=10000,
-        description="The actual code snippet",
-    )
-
-    language: str = Field(
-        ...,
-        description="Programming language (python, sql, bash, yaml, json, dockerfile, etc.)",
-    )
-
-    explanation: Optional[str] = Field(
-        default=None,
-        max_length=5000,
-        description="Line-by-line annotation of the code",
-    )
+    title: str = Field(..., min_length=5, max_length=300)
+    code: str = Field(..., min_length=10, max_length=10000)
+    language: str = Field(...)
+    explanation: Optional[str] = Field(default=None, max_length=5000)
+    when_to_use: Optional[str] = Field(default=None, max_length=500)
+    difficulty_level: int = Field(default=1, ge=1, le=3)
 
     @field_validator("language")
     @classmethod
     def validate_language(cls, v: str) -> str:
         v = v.strip().lower()
         if v not in VALID_LANGUAGES:
-            raise ValueError(
-                f"Invalid language '{v}'. Must be one of: {sorted(VALID_LANGUAGES)}"
-            )
+            raise ValueError(f"Invalid language '{v}'. Must be one of: {sorted(VALID_LANGUAGES)}")
         return v
 
     @field_validator("title")
@@ -350,167 +314,61 @@ class GeneratedExample(BaseModel):
     def clean_title(cls, v: str) -> str:
         return v.strip()
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "title": "Creating a basic async function",
-                "code": "import asyncio\n\nasync def greet(name: str) -> str:\n    await asyncio.sleep(1)\n    return f'Hello, {name}!'",
-                "language": "python",
-                "explanation": "Line 1: Import asyncio for async primitives. Line 3: async def declares a coroutine. Line 4: await pauses execution without blocking.",
-            }
-        }
-
 
 class ExampleGenerationResult(BaseModel):
-    """
-    A batch of examples generated for a single concept.
-    """
+    examples: list[GeneratedExample] = Field(default_factory=list)
+    concept_name: str = Field(default="")
+    model_name: str = Field(default="qwen3.5:9b")
 
-    examples: list[GeneratedExample] = Field(
-        default_factory=list,
-        description="List of code examples for the concept",
-    )
 
-    concept_name: str = Field(
-        default="",
-        description="The concept these examples are for",
-    )
-
-    model_name: str = Field(
-        default="gemma4:26b",
-        description="The LLM model used for generation",
-    )
+VALID_EXERCISE_TYPES = {
+    "predict_output",
+    "fix_bug",
+    "build_from_spec",
+}
 
 
 class GeneratedExercise(BaseModel):
-    """
-    A single practice exercise for a concept, produced by our LLM.
-
-    Each exercise includes:
-      - title + description: What to build
-      - starter_code: Template with TODOs for the learner
-      - solution_code: The correct answer (hidden until requested)
-      - hints: Progressive hints (3 levels: gentle nudge → big hint → near-answer)
-      - test_cases: Input/output pairs for auto-grading
-      - learning_objectives: What this exercise tests
-
-    Example:
-        GeneratedExercise(
-            title="Build a Concurrent URL Fetcher",
-            description="Write an async function that fetches 3 URLs concurrently...",
-            difficulty=3,
-            language="python",
-            starter_code="async def fetch_many(urls):\\n    # TODO\\n    pass",
-            solution_code="async def fetch_many(urls):\\n    tasks = [fetch_one(u) for u in urls]\\n    return await asyncio.gather(*tasks)",
-            hints=["Use a list comprehension", "Pass coroutines to asyncio.gather()"],
-            test_cases=[{"input": "3 URLs", "expected": "list of 3 responses"}],
-            learning_objectives=["Use asyncio.gather for concurrency"]
-        )
-    """
-
-    title: str = Field(
-        ...,
-        min_length=5,
-        max_length=300,
-        description="Short title of the exercise",
-    )
-
-    description: str = Field(
-        ...,
-        min_length=20,
-        max_length=3000,
-        description="What the learner needs to build or achieve",
-    )
-
-    difficulty: int = Field(
-        default=3,
-        ge=1,
-        le=5,
-        description="Exercise difficulty (1-5, matching concept difficulty)",
-    )
-
-    language: str = Field(
-        ...,
-        description="Programming language for the exercise",
-    )
-
-    starter_code: Optional[str] = Field(
-        default=None,
-        max_length=5000,
-        description="Template code with TODOs that the learner starts from",
-    )
-
-    solution_code: str = Field(
-        ...,
-        min_length=5,
-        max_length=10000,
-        description="The correct solution (hidden until requested)",
-    )
-
-    hints: list[str] = Field(
-        default_factory=list,
-        description="Progressive hints (3 levels: gentle → specific → near-answer)",
-    )
-
-    test_cases: list[dict] = Field(
-        default_factory=list,
-        description="Input/output pairs for auto-grading: [{\"input\": ..., \"expected\": ...}]",
-    )
-
-    learning_objectives: list[str] = Field(
-        default_factory=list,
-        description="What this exercise tests",
-    )
+    title: str = Field(..., min_length=5, max_length=300)
+    description: str = Field(..., min_length=20, max_length=3000)
+    difficulty: int = Field(default=3, ge=1, le=5)
+    language: str = Field(...)
+    exercise_type: str = Field(default="build_from_spec")
+    starter_code: Optional[str] = Field(default=None, max_length=5000)
+    solution_code: str = Field(..., min_length=5, max_length=10000)
+    hints: list[str] = Field(default_factory=list)
+    test_cases: list[dict] = Field(default_factory=list)
+    learning_objectives: list[str] = Field(default_factory=list)
+    options: Optional[list[dict]] = Field(default=None)
+    correct_answer: Optional[str] = Field(default=None, max_length=2000)
+    buggy_code: Optional[str] = Field(default=None, max_length=10000)
+    bug_explanation: Optional[str] = Field(default=None, max_length=2000)
 
     @field_validator("language")
     @classmethod
     def validate_language(cls, v: str) -> str:
         v = v.strip().lower()
         if v not in VALID_LANGUAGES:
-            raise ValueError(
-                f"Invalid language '{v}'. Must be one of: {sorted(VALID_LANGUAGES)}"
-            )
+            raise ValueError(f"Invalid language '{v}'. Must be one of: {sorted(VALID_LANGUAGES)}")
         return v
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "title": "Build a Concurrent URL Fetcher",
-                "description": "Write an async function that fetches 3 URLs concurrently using asyncio.gather(). Return results in the same order as input URLs.",
-                "difficulty": 3,
-                "language": "python",
-                "starter_code": "import asyncio\n\nasync def fetch_many(urls: list[str]) -> list[str]:\n    # TODO: Fetch all URLs concurrently\n    pass",
-                "solution_code": "import asyncio\n\nasync def fetch_many(urls: list[str]) -> list[str]:\n    tasks = [fetch_one(url) for url in urls]\n    return await asyncio.gather(*tasks)",
-                "hints": [
-                    "Create a list of coroutines using a list comprehension",
-                    "Pass the coroutines to asyncio.gather()",
-                ],
-                "test_cases": [
-                    {"input": "3 URLs", "expected": "list of 3 responses"},
-                ],
-                "learning_objectives": [
-                    "Use asyncio.gather for concurrent execution",
-                ],
-            }
-        }
+    @field_validator("exercise_type")
+    @classmethod
+    def validate_exercise_type(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in VALID_EXERCISE_TYPES:
+            raise ValueError(f"Invalid exercise_type '{v}'. Must be one of: {sorted(VALID_EXERCISE_TYPES)}")
+        return v
 
 
 class ExerciseGenerationResult(BaseModel):
-    """
-    A batch of exercises generated for a single concept.
-    """
+    exercises: list[GeneratedExercise] = Field(default_factory=list)
+    concept_name: str = Field(default="")
+    model_name: str = Field(default="qwen3.5:9b")
 
-    exercises: list[GeneratedExercise] = Field(
-        default_factory=list,
-        description="List of practice exercises for the concept",
-    )
 
-    concept_name: str = Field(
-        default="",
-        description="The concept these exercises are for",
-    )
-
-    model_name: str = Field(
-        default="gemma4:26b",
-        description="The LLM model used for generation",
-    )
+class ConceptEnrichmentResult(BaseModel):
+    concept_name: str = Field(default="")
+    key_points: list[str] = Field(default_factory=list)
+    common_mistakes: list[str] = Field(default_factory=list)
+    model_name: str = Field(default="qwen3.5:9b")
