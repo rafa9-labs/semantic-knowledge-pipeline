@@ -170,11 +170,25 @@ semantic-knowledge-pipeline/
 - [x] 176 concepts extracted across 16 of 23 topics
 
 #### Phase 9C-2: ELI5 + Relationships — *DONE*
-- [x] 175 ELI5 explanations (99.4% coverage), 32 typed relationships
+- [x] 176 ELI5 explanations (100% coverage), 32 typed relationships
 
-#### Phase 9C-3: Examples + Exercises — *CODE COMPLETE, AWAITING LIVE RUN*
+#### Phase 9C-3: Examples + Exercises — *CODE DONE, NEEDS REGENERATION*
 - [x] ExampleGenerator + ExerciseGenerator pipelines
-- [ ] Run `python enrich_examples.py` and `python enrich_exercises.py` to populate DB
+- [x] 426 examples, 252 exercises in database (old format)
+- [ ] Run `python enrich_examples.py --force` for progressive examples (Getting Started/Real-World/Advanced)
+- [ ] Run `python enrich_exercises.py --force` for 3 exercise types (predict_output/fix_bug/build_from_spec)
+
+#### Phase 9C-4: Concept Enrichment — *DONE*
+- [x] 176/176 concepts enriched with key_points (4-6 per concept) and common_mistakes (3-4 per concept)
+
+#### Phase 9C-Q: Content Quality Overhaul — *DONE*
+- [x] Rewritten ELI5 prompt: 4-6 sentences, structured analogy → mechanism → why → scenario
+- [x] Rewritten example prompt: 3 progressive levels with when_to_use + difficulty_level
+- [x] Rewritten exercise prompt: 3 types (predict_output, fix_bug, build_from_spec)
+- [x] DB schema: new columns on examples (when_to_use, difficulty_level) and exercises (exercise_type, options, correct_answer, buggy_code, bug_explanation)
+- [x] Frontend category color system (pastel/muted: sky/sage/amber/violet/teal)
+- [x] Frontend: type-specific exercise rendering (MC quiz, fix-the-bug, build-from-spec)
+- [x] 70+ automated tests in `test_pipeline_readiness.py`
 
 #### Phase 9D: RAG Chatbot — *NEXT*
 - [ ] Embed source_sections into Weaviate
@@ -317,14 +331,18 @@ npm run dev
 | Domains | 6 |
 | Topics | 23 |
 | Concepts extracted | 176 |
-| ELI5 explanations | 175 |
+| ELI5 explanations | 176 |
 | Typed relationships | 32 |
+| Concepts enriched (key_points) | 176 |
+| Concepts enriched (common_mistakes) | 176 |
+| Code examples | 426 |
+| Practice exercises | 252 |
 
 ---
 
 ## Immediate Next Steps
 
-1. **Populate DB:** Run `python enrich_examples.py` and `python enrich_exercises.py` (requires Ollama)
+1. **Regenerate content:** `python enrich_eli5.py --force`, `python enrich_examples.py --force`, `python enrich_exercises.py --force`
 2. **Phase 9D:** Build RAG chatbot (embed sections, `/api/chat`, `/api/search/suggest`)
 3. **Phase 9E:** Graph traversal + learning paths
 4. **Phase 11D:** Wire AI Tutor and build knowledge graph visualization

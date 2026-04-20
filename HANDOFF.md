@@ -1,7 +1,7 @@
 # HANDOFF.md — Session State for AI Coding Assistant
 
 > **Created:** 2026-04-16, after completing Phase 8 (Design Blueprint)
-> **Updated:** 2026-04-19, after committing Phase 9C-3 + SaaS architecture + frontend (11A-11C)
+> **Updated:** 2026-04-19, after content quality overhaul + color system + concept enrichment
 > **Purpose:** Gives a new AI coding session full context of project state, decisions, and next steps.
 
 ---
@@ -28,9 +28,9 @@
 
 ---
 
-## Current State: Phase 9C-3 Committed, 9D (RAG) Is Next
+## Current State: Content Quality Overhaul Done, Regeneration Pending
 
-### Backend Pipeline — ALL DONE through Phase 9C-3
+### Backend Pipeline — ALL DONE through concept enrichment
 
 | Phase | Status | Key Output |
 |-------|--------|------------|
@@ -45,8 +45,10 @@
 | 9A: New Data Model | ✅ DONE | 7 new tables, 6 domains, 23 topics seed data |
 | 9B: Multi-Source Scraping | ✅ DONE | 10 scrapers, 52 articles, 1,155 sections |
 | 9C-1: Concept Extraction | ✅ DONE | 176 concepts across 16 topics |
-| 9C-2: ELI5 + Relationships | ✅ DONE | 175 ELI5s, 32 typed relationships |
-| 9C-3: Examples + Exercises | ✅ CODE DONE | Generators built, **awaiting live run** |
+| 9C-2: ELI5 + Relationships | ✅ DONE | 176 ELI5s, 32 typed relationships |
+| 9C-3: Examples + Exercises | ✅ CODE DONE | 426 examples, 252 exercises (old format — need --force regenerate) |
+| 9C-4: Concept Enrichment | ✅ DONE | 176/176 key_points + common_mistakes populated |
+| 9C-Q: Quality Overhaul | ✅ DONE | Rewritten prompts (progressive examples, 3 exercise types, richer ELI5), category color system, DB schema upgrade |
 | 9D: RAG Chatbot | 🔜 NEXT | Embed sections, RAG pipeline, POST /api/chat |
 | 9E: Graph & Paths | 🔜 PLANNED | BFS/DFS, learning path generation |
 
@@ -79,7 +81,27 @@
 
 ---
 
-## Next Phase: 9D — RAG Chatbot
+## Next Steps
+
+### Before Next Session: Regenerate Content (requires Ollama, ~4-5 hrs)
+
+The DB currently has OLD-format examples (426, no when_to_use/difficulty_level) and OLD-format exercises (252, all build_from_spec). The new generators need to run with `--force`:
+
+```bash
+python enrich_eli5.py --force           # ~30 min: regenerate 176 ELI5s (richer 4-6 sentence format)
+python enrich_examples.py --force       # ~1-2 hrs: 176 concepts x 3 progressive examples
+python enrich_exercises.py --force      # ~2-3 hrs: 176 concepts x 3 typed exercises (predict_output + fix_bug + build_from_spec)
+```
+
+**WARNING:** `--force` will ADD new examples/exercises alongside existing ones. To replace cleanly, delete old ones first:
+```python
+from database.connection import SessionLocal
+from database.models import Example, Exercise
+with SessionLocal() as s:
+    s.query(Example).delete(); s.query(Exercise).delete(); s.commit()
+```
+
+### Next Phase: 9D — RAG Chatbot
 
 ### What to Build:
 1. Embed raw article sections (not just triples) into Weaviate
@@ -303,8 +325,10 @@ BACKEND PIPELINE:
   ✅ Phase 9A: New Data Model (7 tables, Alembic, seed data)
   ✅ Phase 9B: Multi-Source Scraping (10 scrapers, 52 articles)
   ✅ Phase 9C-1: Concept Extraction (176 concepts)
-  ✅ Phase 9C-2: ELI5 + Relationships (175 ELI5s, 32 edges)
-  ✅ Phase 9C-3: Examples + Exercises (code complete, DB pending)
+  ✅ Phase 9C-2: ELI5 + Relationships (176 ELI5s, 32 edges)
+  ✅ Phase 9C-3: Examples + Exercises (426 examples, 252 exercises — need --force regenerate for new format)
+  ✅ Phase 9C-4: Concept Enrichment (176/176 key_points + common_mistakes)
+  ✅ Phase 9C-Q: Quality Overhaul (rewritten prompts, 3 exercise types, color system, DB schema upgrade)
   🔜 Phase 9D: RAG Chatbot
   🔜 Phase 9E: Graph Traversal & Learning Paths
 
@@ -324,10 +348,11 @@ SAAS PRODUCT:
 
 | Session | Phase | Task |
 |---------|-------|------|
-| Current | 9C-3 | Run `enrich_examples.py` + `enrich_exercises.py` to populate DB |
-| Next | 9D | RAG chatbot: embed sections, `/api/chat`, `/api/search/suggest` |
-| +1 | 9E | Graph traversal: BFS/DFS, `/api/graph`, `/api/graph/path` |
-| +2 | 11D | Frontend: wire AiTutor, build KnowledgeGraphView + LearningPathView |
-| +3 | 11E | Stripe integration, PaywallGate, on-demand generation |
-| +4 | 12 | FastAPI auth middleware, cloud LLM swap, pagination |
-| +5 | 13 | Deploy: Vercel + Railway, kodastudy.com, seed production |
+| DONE | 9C-4 | `enrich_key_points.py` — 176/176 enriched, 0 failed |
+| Next | 9C-Q | `enrich_eli5.py --force` + `enrich_examples.py --force` + `enrich_exercises.py --force` (~4-5 hrs with Ollama) |
+| +1 | 9D | RAG chatbot: embed sections, `/api/chat`, `/api/search/suggest` |
+| +2 | 9E | Graph traversal: BFS/DFS, `/api/graph`, `/api/graph/path` |
+| +3 | 11D | Frontend: wire AiTutor, build KnowledgeGraphView + LearningPathView |
+| +4 | 11E | Stripe integration, PaywallGate, on-demand generation |
+| +5 | 12 | FastAPI auth middleware, cloud LLM swap, pagination |
+| +6 | 13 | Deploy: Vercel + Railway, kodastudy.com, seed production |
