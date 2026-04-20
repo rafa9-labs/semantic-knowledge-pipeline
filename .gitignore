@@ -26,6 +26,7 @@ build/
 .env
 .env.local
 .env.production
+opencode.json
 
 # ============================================================
 # IDE
